@@ -236,6 +236,12 @@ class Round:
         plan = self.agents_plan() or {}
         return int((plan.get("subAgents") or {}).get(name, 0))
 
+    def owned_artifacts(self, step):
+        """The other steps' artifacts, runner-owned for this producer: an edit is reverted by M1, never read as the owner's out-of-band edit."""
+        owner = {s.artifact: s.name for s in pipeline.PIPELINE if s.artifact}
+        owner["specProse"] = owner["spec"]
+        return [self.paths[key] for key, name in owner.items() if name != step]
+
     def findings_for(self, producer, statuses=OPEN):
         return [dict(e, id=k) for k, e in self.state["findings_ledger"].items() if e.get("step") == producer and e.get("status") in statuses]
 
@@ -914,7 +920,7 @@ class Round:
                 reverted += checks.m2_frozen(self.cfg, self.root, self.spec().get("testPaths") or [], snapshot)[1]
             allowed = self.step_context(step, attempt)["write_paths"]
             reverted += checks.m1_strays(self.cfg, self.root, self.paths, allowed, [(xy, p) for xy, p in snapshot if p not in reverted],
-                                         exempt=specguard.spec_files(self.root))[1]
+                                         exempt=specguard.spec_files(self.root), owned_extra=self.owned_artifacts(step))[1]
             if reverted:
                 self.history(f"{step} attempt {attempt}: {status}; out-of-scope changes reverted: {', '.join(reverted)}")
             gitops.git(self.root, "add", "-A")
@@ -930,7 +936,8 @@ class Round:
             findings += f2
             remaining = [(xy, p) for xy, p in snapshot if p not in r2]
         allowed = self.step_context(step, attempt)["write_paths"]
-        f1, r1 = checks.m1_strays(self.cfg, self.root, self.paths, allowed, remaining, merge_tree=merge_tree, exempt=specguard.spec_files(self.root))
+        f1, r1 = checks.m1_strays(self.cfg, self.root, self.paths, allowed, remaining, merge_tree=merge_tree, exempt=specguard.spec_files(self.root),
+                                  owned_extra=self.owned_artifacts(step))
         findings += f1
         unresolved = bool([f for f in findings if f["id"] == "L3"])
         if unresolved:

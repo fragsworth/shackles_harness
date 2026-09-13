@@ -54,11 +54,11 @@ def dirty(root, exclude=()):
     return [(xy, p) for xy, p in gitops.status_paths(root) if p not in exclude and not p.endswith("/")]
 
 
-def m1_strays(cfg, root, paths, allowed, items, merge_tree=None, exempt=()):
-    """Changed paths (a dirty snapshot) outside the allowed H-relative prefixes and the round folder, or inside runner-owned round files;
-    spec files are exempt (E1 shows them to the owner instead)."""
+def m1_strays(cfg, root, paths, allowed, items, merge_tree=None, exempt=(), owned_extra=()):
+    """Changed paths (a dirty snapshot) outside the allowed H-relative prefixes and the round folder, or inside runner-owned round files
+    (`owned_extra` adds the other steps' artifacts); spec files are exempt (E1 shows them to the owner instead)."""
     allowed_rel = [cfg.repo_rel(p) for p in allowed] + [cfg.repo_rel(paths["folder"])]
-    owned = [cfg.repo_rel(paths[k]) for k in RUNNER_OWNED]
+    owned = [cfg.repo_rel(paths[k]) for k in RUNNER_OWNED] + [cfg.repo_rel(p) for p in owned_extra]
     strays = []
     for xy, path in items:
         if path in exempt:

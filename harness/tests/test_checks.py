@@ -67,6 +67,25 @@ def test_m1_stray_reverted_and_in_scope_kept(tmp_path):
     assert r.state()["failures"]["PLAN-AGENTS"] == 1
 
 
+def test_m1_reverts_an_edit_of_an_earlier_steps_artifact(tmp_path):
+    """CLEANUP's wording fix of the round's SPEC.md is reverted as a stray, not committed and re-entered as the owner's edit (R3-M2)."""
+    r = Repo(tmp_path)
+    r.start(extra=["--delegate"])
+    res = r.play(until="CLEANUP")
+    before = r.read(f"{FOLDER}/SPEC.md")
+    message = stub_agent.perform(res.json["prompt_file"], "pass", {})
+    r.append(f"{FOLDER}/SPEC.md", "\nCLEANUP-WORDING-FIX\n")
+    rec = r.record("CLEANUP", 1, message)
+    assert rec.code == 0 and rec.json["next_step"] == "CLEANUP", rec
+    f = mechanical(r, "CLEANUP")
+    assert ids(f) == ["M1"] and f["findings"][0]["quote"] == "harness/archives/rounds/0001/SPEC.md"
+    assert r.read(f"{FOLDER}/SPEC.md") == before and r.dirty() == ""
+    res = r.next()
+    st = r.state()
+    assert res.json["step"] == "CLEANUP" and res.json["attempt"] == 2 and st["round_retries"] == 0 and st["tests_frozen_at"]
+    assert "changed out of band" not in r.read(f"{FOLDER}/HISTORY.md")
+
+
 def test_m2_frozen_test_reverted(tmp_path):
     r = Repo(tmp_path)
     r.start()

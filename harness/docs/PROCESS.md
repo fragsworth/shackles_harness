@@ -18,7 +18,7 @@ Git is the lock manager: a remote ref update is the compare-and-swap that claims
 Paths in config, artifacts, prompts, findings and STATE are H-relative POSIX; `..` is allowed so a target project beside `harness/` can be declared.
 The runner alone converts H-relative paths to repo-relative for git and refuses a path that escapes the repository.
 A round lives in `archives/rounds/NNNN/`, named by `roundPaths`; every file name in it comes from `roundPaths`.
-Runner-owned round files, reverted when an agent changes them: `STATE.json`, `HISTORY.md`, `OWNER.log`, `PROMPTS/`, `RESULTS/`, `FINDINGS/`, `tests-archive/`.
+Runner-owned round files, reverted when an agent changes them: `STATE.json`, `HISTORY.md`, `OWNER.log`, `PROMPTS/`, `RESULTS/`, `FINDINGS/`, `tests-archive/`, and for each producer the other steps' artifacts (`PLAN.json`, `AGENTS-PLAN.json`, `SPEC.json`, `SPEC.md`, `SUITE.json`, `POSTMORTEM.md` belong to their own producer), so only the owner's committed edit of an artifact counts as out of band.
 Agents write their artifact, the judgment-call files (append-only) and, for POSTMORTEM, the carry-forward files `docs/TODO.md` and `docs/CLARIFICATIONS.md`.
 `archives/rounds/index.jsonl` gets one line per finished or abandoned round; `.gitattributes` merges it with `merge=union`.
 The union attribute and the spec baseline are pinned to `harness/archives/` whatever `roundPaths.folder` or `archivesPath` say, so an owner who moves the rounds folder out of `archives/` moves the `.gitattributes` line with it.
@@ -99,7 +99,7 @@ A committed out-of-band edit of PLAN.json returns the round to CHAT-TO-PLAN-GATE
 
 S1: the artifact is readable and valid (schema and rules); S2: every changed test file is in exactly one of `keep` and `archive`, by the H-relative path the prompt prints.
 M0: HEAD moved during the attempt (an agent commit is undone by a soft reset; on a merge attempt it is an infrastructure error).
-M1: changed paths outside WRITE_PATHS, the round folder and the spec files, or inside runner-owned files, are reverted and listed.
+M1: changed paths outside WRITE_PATHS, the round folder and the spec files, or inside runner-owned files (the other steps' artifacts included), are reverted and listed.
 M2: a change under `testPaths` after the tests froze is reverted; on a merge attempt a conflicted test is the non-blocking `T1` instead.
 M3: `SPEC.verify` runs from H under its timeout at SPEC-TO-IMPLEMENTATION and CLEANUP; M5: `suiteCommand` runs at CLEANUP (and as L2 at LANDING).
 M4: the judgment-call files only grew since the prompt commit; a rewrite is restored.
