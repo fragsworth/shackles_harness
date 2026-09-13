@@ -1,0 +1,8 @@
+.claude/worktrees/
+.worktrees/
+harness/OWNER.log
+harness/local.yaml
+harness/DRAFT-PLAN.json
+__pycache__/
+*.pyc
+.pytest_cache/
