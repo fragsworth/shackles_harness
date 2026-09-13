@@ -812,8 +812,11 @@ class Round:
         after = self.judgment_counts()
         st["judgment_calls"] = after
         delta = f"judgment calls +{after['defined'] - before['defined']} defined, +{after['undefined'] - before['undefined']} undefined"
-        self.history(f"{step} attempt {attempt}: {obj.get('status') or obj.get('verdict')}\n\n" + (obj.get("notes") or "")[:NOTE_CAP]
-                     + f"\n\ncost ${round(usd, 4)} ({source}); {delta}\n" + self.judgment_report())
+        notes = obj.get("notes") or ""
+        if len(notes) > NOTE_CAP:
+            notes = notes[:NOTE_CAP] + f" [cut at {NOTE_CAP} characters; the whole message is {result_rel}.json]"
+        self.history(f"{step} attempt {attempt}: {obj.get('status') or obj.get('verdict')}\n\n{notes}"
+                     f"\n\ncost ${round(usd, 4)} ({source}); {delta}\n" + self.judgment_report())
         if st["status"] == "finished":
             self.history("FINISHED")
         self.save()
@@ -1264,8 +1267,8 @@ class Round:
     # ---- read-only views ---------------------------------------------------
     def status_payload(self):
         st = self.state
-        living = None
-        if gitops.head(self.root):
+        living = None  # the charge the diff from base_commit would book; once landed the booked living_usd is the figure
+        if gitops.head(self.root) and not st.get("landed_at"):
             try:
                 living = ledger.living_charge(self.cfg, self.root, st["base_commit"], "HEAD", self.spec().get("testPaths") or [])[0]
             except RunnerError:
@@ -1436,7 +1439,7 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
             raise RunnerError(f"push of {branch_name} failed: {(proc.err or proc.out).strip()[-300:]}", 1)
     runner = os.path.join(wt, "harness", "src", "run.py")
     return {"round": rid, "id": r.id, "folder": r.paths["folder"], "branch": branch_name, "worktree": wt, "runner": runner,
-            "record_hint": f"py -3.13 {procs.quoted(runner)} --root {procs.quoted(wt)} next"}
+            "record_hint": f"py -3.13 {procs.quoted(runner)} --root {procs.quoted(wt)} next", "warnings": r.notes}
 
 
 def open_round(root, rid=None):

@@ -50,6 +50,7 @@ def test_start_requires_approval_words_when_the_gate_is_enabled(tmp_path):
     assert res.code == 2, "a line before presented_at does not count"
     res = r.start(plan=plan, extra=["--unverified"])
     assert res.code == 0 and "unverified" in r.read("harness/archives/rounds/0001/HISTORY.md")
+    assert any("unverified" in w for w in res.json["warnings"]), "start prints its flags, not only HISTORY"
     r2 = repo(tmp_path / "b", gates={"CHAT-TO-PLAN-GATE": 1})
     r2.owner("approve the plan", at="2026-01-01T01:00:00Z")
     assert r2.start(plan=dict(PLAN, approval={"mode": "approved", "words": "approve the plan"})).code == 0
@@ -62,8 +63,8 @@ def test_start_creates_the_round_folder_state_and_ledger(tmp_path):
     res = r.start()
     assert res.code == 0
     out = res.json
-    assert set(out) >= {"round", "id", "folder", "branch", "worktree", "runner", "record_hint"}
-    assert out["id"] == "0001" and out["folder"] == "archives/rounds/0001" and os.path.isabs(out["worktree"])
+    assert set(out) >= {"round", "id", "folder", "branch", "worktree", "runner", "record_hint", "warnings"}
+    assert out["id"] == "0001" and out["folder"] == "archives/rounds/0001" and os.path.isabs(out["worktree"]) and out["warnings"] == []
     folder = "harness/archives/rounds/0001"
     for name in ("PLAN.json", "STATE.json", "HISTORY.md", "PROMPTS/.keep", "RESULTS/.keep", "FINDINGS/.keep",
                  "DEFINED_JUDGMENT_CALLS.md", "UNDEFINED_JUDGMENT_CALLS.md"):
@@ -183,6 +184,7 @@ def assert_round_files(r, gates_on):
     assert st["judgment_calls"]["defined"] >= 7 and st["judgment_calls"]["undefined"] == 0
     assert len([e for e in st["spend"]["entries"] if e["source"] == "living"]) == 1
     assert "## round 0001" in r.read("harness/docs/TODO.md")
+    assert r.run("status").json["living_preview_usd"] is None, "once landed, the booked living_usd is the figure"
 
 
 def drive(r, modes=None, env=None, quotes=("approve",)):
@@ -284,6 +286,7 @@ def test_status_spend_and_check_are_read_only(tmp_path):
     head = r.head()
     status = r.run("status").json
     assert status["step"] == "SPEC-TO-IMPLEMENTATION" and status["attempt_pending"]["attempt"] == 1 and "undefined_file" in status
+    assert status["living_preview_usd"] > 0, "before landing: the charge the diff from base_commit would book"
     spend = r.run("spend").json
     assert spend["total_usd"] > 0 and spend["quote_usd"] == 100.0
     check = r.run("check")
@@ -326,3 +329,14 @@ def test_render_command_on_a_round_has_no_side_effects(tmp_path):
     assert f'"{harness}/DRAFT-PLAN.json": JSON object with' in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"
     start = f'py -3.13 "{os.path.join(harness, "src", "run.py")}" --root "{r.root}" start --plan "{harness}/DRAFT-PLAN.json"'
     assert start in res.json["prompt"], "the printed start command names the repository it was rendered for"
+
+
+def test_history_marks_a_note_it_cuts(tmp_path):
+    r = repo(tmp_path)
+    r.start()
+    a = r.next().json
+    stub_agent.perform(a["prompt_file"], "pass", {})
+    assert r.record("PLAN-AGENTS", 1, {"status": "DONE", "notes": "N" * 2500}).code == 0
+    text = r.read("harness/archives/rounds/0001/HISTORY.md")
+    assert "N" * 2000 + " [cut at 2000 characters; the whole message is archives/rounds/0001/RESULTS/PLAN-AGENTS-1.json]" in text
+    assert "N" * 2001 not in text

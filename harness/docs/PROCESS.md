@@ -44,12 +44,12 @@ Attempt numbers of a step never restart, so `PROMPTS/`, `RESULTS/` and `FINDINGS
 
 `doctor` checks the environment, config, lint, drift, hook, `claude` resolution, agent definitions and renders every prompt on a fixture round; `--probe-cli` makes one capped real call.
 `config`, `render --step S [--fixture] [--raw]`, `spec status|diff|accept --note T` and `agents [--write]` read or regenerate files without touching a round.
-`start --plan F` validates the plan before any git command, refuses on spec drift unless `--accept-spec`, claims an id on origin, adds the worktree and makes the start commit; `--no-branch` runs in the main checkout (refused from a linked worktree).
+`start --plan F` validates the plan before any git command, refuses on spec drift unless `--accept-spec`, claims an id on origin, adds the worktree and makes the start commit, and prints its FLAGs as `warnings`; `--no-branch` runs in the main checkout (refused from a linked worktree).
 A worktree round starts from `origin/<mainBranch>`, so `start` refuses while a spec file, `spec.yaml` or the baseline differs from it: commit and push the change first (`--accept-spec` then covers drift that is already on origin).
 `next` does mechanical work until an agent run is due and prints the action, a checkpoint (exit 10) or `done`; `--discard` resets unrecorded work of the pending attempt, which `next` otherwise refuses to touch while any dirty path lies inside that attempt's write paths.
 `record --step S --attempt N --result F [--cost USD | --tokens N [--agent RUNG]] [--spawns K]` validates the final message, runs the checks, routes the outcome, books the cost, commits and pushes; `--agent` names the roster rung that actually ran, priced instead of the action's, and is refused unless it is a roster key.
 `approve`, `delegate [--through STEP]`, `answer --text T`, `override --steps A,B` and `abandon --reason R` carry the owner's words in `--quote` and are verified against the owner log when it exists (`--unverified` records them with a FLAG).
-`status`, `spend [--project]` and `rounds` are read-only; `check` writes nothing shared: it runs the current step's checks, or at LANDING merges the target into the worktree and runs verify and the suite, and exits 3 on findings.
+`status`, `spend [--project]` and `rounds` are read-only; `status` carries `living_preview_usd`, the charge the diff from `base_commit` would book, until the round lands (then the booked `living_usd` is the figure); `check` writes nothing shared: it runs the current step's checks, or at LANDING merges the target into the worktree and runs verify and the suite, and exits 3 on findings.
 `run --until checkpoint|step|done` is the headless loop (next, agent command, record); `probe` and `sandbox` are the real-agent testing tools of docs/TESTING.md.
 A `record` whose push is rejected stops with `another runner owns this round (push rejected)`; any other push failure exits 1 and `next` pushes again when the branch is ahead.
 
@@ -65,7 +65,8 @@ The action names the sub-agent as `agent_type` (`shackles-producer-<rung>` or `s
 A prompt is `harness/AGENTS.md` verbatim, a blank line, then the rendered `<STEP>-OVERVIEW.txt` or `<GATE>.txt`; the process block is appended when the prose lacks the `plumbing.PROCESS-INSTRUCTIONS` token.
 The machine-readable lines are the last `STEP:`, `KIND:`, `ROUND:`, `ATTEMPT:`, `WORKTREE:`, `HARNESS:`, `ARTIFACT:`, `RESULT_FILE:`, `DIFF_FILE:`, `WRITE_PATHS:`, `FROZEN_PATHS:` and `MERGE_IN_PROGRESS:` lines of `src/shackles/plumbing/producer.txt` and `gate.txt`.
 A producer ends with `{"status": DONE|NEEDS-OWNER|UPSTREAM|BLOCKED, ...}` and a gate with `{"verdict": PASS|FAIL, "findings": [...], ...}` as `schemas.py` defines; the JSON is extracted from the whole message, the last fence, or the last top-level balanced object that carries `status` or `verdict` (a nested resolution, ruling or `needs_owner` never wins).
-An invalid final message is saved raw, counted as an infrastructure error with its cost booked, and the same attempt is rerun; `infraRetries` invalid results at one attempt raise the `infra` checkpoint.
+`record` rewrites `RESULTS/<STEP>-<n>.json` as the parsed object, pretty-printed (a gate's findings normalized), and HISTORY quotes the first 2000 characters of its `notes`, marking a cut.
+An invalid final message is saved raw as `RESULTS/<STEP>-<n>.raw-<k>.txt`, counted as an infrastructure error with its cost booked, and the same attempt is rerun; `infraRetries` invalid results at one attempt raise the `infra` checkpoint.
 The producer's `judgment_calls` are counts, and a gate-shaped list of lines is tolerated; the runner counts the files, not the message.
 The gate's verdict is authoritative: a PASS with blocking findings makes them non-blocking, a FAIL without a blocking finding keeps the findings as given, and either mismatch is one HISTORY line.
 
