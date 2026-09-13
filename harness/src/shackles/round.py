@@ -1183,7 +1183,7 @@ class Round:
         verified = ownermod.verify_quote(self.owner_log, quote, cp.get("at") if st["status"] == "checkpoint" else None)
         if verified is False and not unverified:
             raise RunnerError(f"quote not found in the owner log after {cp.get('at')}: {quote!r} (pass --unverified to record it anyway)", 2)
-        tag = "[via driver]" if verified else "[via driver, unverified]"
+        tag = f"[via driver: {command}]" if verified else f"[via driver: {command}, unverified]"  # one line per command: two acts with one sentence are two lines
         ownermod.append_line(self.abs(self.paths["ownerLog"]), quote, tag=tag)
         if not verified:
             self.flag(f"{command}: quote recorded unverified ({'no owner log' if verified is None else 'not in the log'})", who="driver")

@@ -93,4 +93,4 @@ def test_round_slice_and_driver_lines(tmp_path):
     r.owner("approve the spec")
     assert r.run("approve", "--quote", "approve the spec").code == 0
     text = r.read("harness/archives/rounds/0001/OWNER.log")
-    assert "[via driver]\tapprove the spec" in text
+    assert "[via driver: approve]\tapprove the spec" in text, "the line names the command, so override then approve with one sentence are two acts (R5-n1)"
