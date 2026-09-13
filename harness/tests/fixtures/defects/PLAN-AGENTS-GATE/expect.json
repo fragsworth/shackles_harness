@@ -1,6 +1,6 @@
 {
   "verdict": "FAIL",
-  "quote_contains": "0.9",
+  "quote_contains": ["0.9", "0.01"],
   "files": {"archives/rounds/0001/AGENTS-PLAN.json": "AGENTS-PLAN.json"},
   "planted": "nine tenths of the work budget on CLEANUP, almost nothing on the implementation"
 }

@@ -44,6 +44,8 @@ def prepare(root, step, seed, agent, budget, folder=None):
     fixtures, stub_agent = _fixtures()
     folder = folder or tempfile.mkdtemp(prefix=f"shackles-probe-{step}-")
     os.makedirs(folder, exist_ok=True)
+    if os.path.exists(os.path.join(folder, "repo")):
+        raise RunnerError(f"{folder} already holds a probe repository; build each probe in a new --dir", 2)
     cfg = configmod.load(root)
     gates = {g: 1 for g in pipeline.llm_gates()}
     config = {"agentCommand": cfg["agentCommand"], "gates": {**{g: 0 for g in pipeline.gates()}, **gates}}
@@ -94,7 +96,9 @@ def score(folder, result_file):
         card["verdict"] = obj.get("verdict")
         card["verdict_as_expected"] = obj.get("verdict") == expect["verdict"]
         quotes = " ".join(f.get("quote", "") for f in obj.get("findings") or [])
-        card["quote_contains_planted"] = (expect["quote_contains"] in quotes) if expect.get("quote_contains") else None
+        anchors = expect.get("quote_contains") or []  # one anchor or a list: a plant has two halves and a right FAIL may quote either
+        anchors = [anchors] if isinstance(anchors, str) else list(anchors)
+        card["quote_contains_planted"] = any(a in quotes for a in anchors) if anchors else None
         jc = obj.get("judgment_calls") or {}
         card["judgment_lines"] = len(jc.get("defined") or []) + len(jc.get("undefined") or [])
     elif obj:
@@ -129,13 +133,29 @@ def changed_steps(root):
     return [n for n in pipeline.NAMES if n in steps]
 
 
+def probe_folder(result_file):
+    """The nearest folder above the result file that holds probe.json, else None."""
+    here = os.path.dirname(os.path.abspath(result_file))
+    while not os.path.exists(os.path.join(here, "probe.json")):
+        parent = os.path.dirname(here)
+        if parent == here:
+            return None
+        here = parent
+    return here
+
+
 def cmd(args, root):
     if args.check:
-        folder = args.dir or os.path.dirname(os.path.abspath(args.check))
+        folder = args.dir or probe_folder(args.check)
+        if not folder or not os.path.exists(os.path.join(folder, "probe.json")):
+            raise RunnerError("--check needs --dir <the probe's folder, the one holding probe.json>", 2)
         return score(folder, args.check), 0
     steps = changed_steps(root) if args.changed else ([args.step] if args.step else [])
     if not steps:
         return {"steps": [], "hint": "nothing to probe: pass --step, or --changed with drifted prose"}, 0
+    producers = [s for s in steps if pipeline.step(s).kind != "gate"]
+    if args.seed == "defect" and producers:
+        raise RunnerError(f"--seed defect: only gates have planted defects, not {', '.join(producers)}", 2)
     out = []
     for step in steps:
         if pipeline.step(step).kind not in pipeline.AGENT_KINDS:

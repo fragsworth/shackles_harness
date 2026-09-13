@@ -28,9 +28,37 @@ def test_every_defect_fixture_loads():
     for gate in dirs:
         folder, expect = probe.load_defect(gate)
         assert expect["verdict"] == "FAIL" and expect["quote_contains"] and expect["files"]
+        anchors = expect["quote_contains"] if isinstance(expect["quote_contains"], list) else [expect["quote_contains"]]
+        assert anchors and all(isinstance(a, str) and a for a in anchors), "one anchor or a list of them (R5-M4)"
         for rel, source in expect["files"].items():
             assert os.path.exists(os.path.join(folder, source)), (gate, source)
             assert not os.path.isabs(rel)
+
+
+def test_probe_check_scores_any_listed_anchor_and_finds_its_folder(tmp_path):
+    """A FAIL quoting any listed anchor scores true (R5-M4); `--check` finds the probe folder above the result file or refuses, and a folder
+    already holding a repo is refused (R5-m8); a defect seed on a producer step is refused before anything is built (R5-n5)."""
+    folder = tmp_path / "probe"
+    results = folder / "repo" / "harness" / "archives" / "rounds" / "0001" / "RESULTS"
+    results.mkdir(parents=True)
+    procs.write_json(str(folder / "probe.json"), {"step": "SPEC-TO-TESTS-GATE", "seed": "defect", "root": str(folder / "repo"), "action": {},
+                                                   "expect": {"verdict": "FAIL", "quote_contains": ["shout", "whisper"], "files": {}}})
+    result = str(results / "SPEC-TO-TESTS-GATE-1.json")
+
+    def check(quote):
+        procs.write_text(result, json.dumps({"verdict": "FAIL", "findings": [{"id": "F1", "quote": quote, "reason": "r", "suggestion": "s", "blocking": True}]}))
+        return run_cli(REPO_ROOT, "probe", "--check", result)
+
+    for quote in ("def test_shout_again(self):", "Add `whisper(text)` to `src/toy/text.py`"):
+        res = check(quote)
+        assert res.code == 0 and res.json["verdict_as_expected"] and res.json["quote_contains_planted"], quote
+    assert check("The tests under `tests/toy/` cover both functions.").json["quote_contains_planted"] is False
+    res = run_cli(REPO_ROOT, "probe", "--check", str(tmp_path / "loose.json"))
+    assert res.code == 2 and "--check needs --dir" in res.json["error"]
+    res = run_cli(REPO_ROOT, "probe", "--step", "PLAN-TO-SPEC-GATE", "--manual", "--dir", str(folder))
+    assert res.code == 2 and "already holds a probe repository" in res.json["error"]
+    res = run_cli(REPO_ROOT, "probe", "--step", "SPEC-TO-IMPLEMENTATION", "--seed", "defect", "--manual", "--dir", str(tmp_path / "p"))
+    assert res.code == 2 and "only gates have planted defects, not SPEC-TO-IMPLEMENTATION" in res.json["error"] and not os.path.exists(str(tmp_path / "p"))
 
 
 @pytest.mark.slow

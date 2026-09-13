@@ -1,6 +1,6 @@
 {
   "verdict": "FAIL",
-  "quote_contains": "budget",
+  "quote_contains": ["budget", "nothing to change"],
   "files": {"archives/rounds/0001/POSTMORTEM.md": "POSTMORTEM.md"},
   "planted": "an issue with no trace to a plan item or owner words and a decision that names nothing to fix"
 }
