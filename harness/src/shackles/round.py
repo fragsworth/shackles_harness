@@ -94,7 +94,8 @@ class Round:
         return self.read_json("spec") or {}
 
     def agents_plan(self):
-        return self.read_json("agentsPlan") if "PLAN-AGENTS-GATE" in self.state["step_commits"] else None
+        st = self.state  # an overridden PLAN-AGENTS means default shares and rungs, even when a recorded attempt left a plan behind
+        return self.read_json("agentsPlan") if "PLAN-AGENTS-GATE" in st["step_commits"] and "PLAN-AGENTS" not in st["overrides"] else None
 
     def plan(self):
         return self.read_json("plan") or {}
@@ -650,12 +651,19 @@ class Round:
         rel = f"{self.paths['findings']}/{name}-{n}.json"
         self.write_findings(rel, {"verdict": "PASS", "findings": [], "source": source, "step": name, "attempt": n})
         self.history(f"{name} skipped ({source})")
-        self.accept_producer(pipeline.producer_of(name))
+        producer = pipeline.producer_of(name)
+        if st.get("pending_question"):  # the question waited at this gate and nobody rules on it: the assumption stands, an undefined call
+            self.settle_question(producer, f"{name} skipped ({source})")
+            self.history(f"{producer}'s question stands on its assumption: {name} was skipped")
+        self.accept_producer(producer)
         self.complete(name)
 
     def skip_producer(self, name):
         st = self.state
         self.history(f"{name} overridden: skipped with defaults")
+        if st.get("pending_question"):
+            st["pending_question"] = None
+            self.history(f"{name} overridden: its open question is dropped")
         st["step_commits"][name] = self.head()
         gate = pipeline.gate_of(name)
         if gate:
@@ -1014,9 +1022,8 @@ class Round:
                 st["step"] = gate
                 return
             if self.delegated():
-                procs.append_text(self.abs(self.paths["undefined"]), f"- {step} attempt {attempt} assumed: {st['pending_question']['assumption'] or '(none stated)'} (runner: gate disabled, delegated; question: {st['pending_question']['question']})\n")
+                self.settle_question(f"{step} attempt {attempt}", "gate disabled, delegated")
                 self.history(f"{step} attempt {attempt}: NEEDS-OWNER proceeds on the stated assumption (delegated)")
-                st["pending_question"] = None
             else:
                 self.raise_checkpoint("question", step, question=f"{st['pending_question']['question']} (assumption: {st['pending_question']['assumption'] or 'none'})")
                 return
@@ -1025,6 +1032,12 @@ class Round:
         else:
             self.accept_producer(step)
             self.complete(step)
+
+    def settle_question(self, who, why):
+        """The producer's open question stands on its assumption: one undefined line names who assumed what and why nobody ruled."""
+        q = self.state["pending_question"]
+        procs.append_text(self.abs(self.paths["undefined"]), f"- {who} assumed: {q.get('assumption') or '(none stated)'} (runner: {why}; question: {q['question']})\n")
+        self.state["pending_question"] = None
 
     def e1(self, edits):
         """E1: spec-file edits are kept, `spec_edits` names the files that differ from base_commit, every new or changed diff goes
@@ -1145,11 +1158,8 @@ class Round:
             procs.append_text(self.abs(self.paths["defined"]), f"- {step}-{attempt} withdrew the producer's question; assume: {needs.get('reason', '')} (via runner)\n")
             st["pending_question"] = None
         if st.get("pending_question") and needs.get("status") not in ("upheld", "withdrawn"):
-            q = st["pending_question"]
-            procs.append_text(self.abs(self.paths["undefined"]), f"- {producer} assumed: {q.get('assumption') or '(none stated)'} "
-                              f"(runner: {step} attempt {attempt} gave no ruling on the question: {q['question']})\n")
+            self.settle_question(producer, f"{step} attempt {attempt} gave no ruling")
             self.flag(f"{step} attempt {attempt}: no ruling on the producer's question; the assumption stands")
-            st["pending_question"] = None
         if obj["verdict"] == "PASS":
             for f in obj.get("findings") or []:
                 st["carried"].append({"id": f["id"], "quote": f["quote"], "reason": f["reason"], "suggestion": f.get("suggestion", ""), "source": "gate"})
@@ -1265,9 +1275,11 @@ class Round:
         for name in steps:
             if not pipeline.is_overridable(name):
                 raise RunnerError(f"{name} cannot be overridden", 2)
-            accepted = (pipeline.gate_of(name) or name) in st["step_commits"]  # a producer is accepted by its gate, not by its clean commit
-            if accepted or pipeline.index(name) < current:
+            gate = pipeline.gate_of(name)
+            if (gate or name) in st["step_commits"]:  # a producer is accepted by its gate, not by its clean commit
                 raise RunnerError(f"{name} is already accepted", 2)
+            if pipeline.index(name) < current:  # the producer ran and its gate has not judged the artifact yet
+                raise RunnerError(f"{name} already ran; its gate {gate} is pending: override the gate instead", 2)
             if name not in st["overrides"]:
                 st["overrides"].append(name)
         pending = st.get("attempt_pending")

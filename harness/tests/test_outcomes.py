@@ -228,6 +228,42 @@ def test_override_at_a_review_checkpoint_stands_until_approve(tmp_path):
     assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and r.json(f"{FOLDER}/FINDINGS/SPEC-TO-TESTS-GATE-1.json")["source"] == "override"
 
 
+def test_override_settles_or_drops_the_producers_open_question(tmp_path):
+    """An override of the producer drops its question, of the gate it waits at settles it as an undefined call; no later gate is asked it (R4-M2);
+    an overridden PLAN-AGENTS means default shares and rungs even after a recorded attempt (R4-n9)."""
+    r = Repo(tmp_path, gates={"SPEC-TO-TESTS-GATE": 1})
+    r.start()
+    res = r.play(modes={"PLAN-AGENTS:1": "needs_owner"}, env={"STUB_RUNG": "low"})
+    assert res.json["checkpoint"]["kind"] == "question" and res.json["checkpoint"]["step"] == "PLAN-AGENTS"
+    res = r.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip it")
+    assert res.code == 0 and res.json["kind"] == "resumed"
+    res = r.play(until="PLAN-TO-SPEC")
+    assert res.json["step"] == "PLAN-TO-SPEC" and res.json["agent"] == "max", "the recorded plan named low; overridden, the defaults apply"
+    assert r.state()["pending_question"] is None and "PLAN-AGENTS overridden: its open question is dropped" in history(r)
+    res = r.play(until="SPEC-TO-TESTS-GATE", auto_review=True)
+    assert res.json["step"] == "SPEC-TO-TESTS-GATE"
+    prompt = open(res.json["prompt_file"], encoding="utf-8").read()
+    assert stub_agent.QUESTION not in prompt and "The producer's question, if any: none" in prompt
+    rec = r.act(res.json, "pass")
+    assert rec.code == 0 and not any("no ruling" in w for w in rec.json["warnings"])
+    assert "assumed" not in r.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md") and r.state()["judgment_calls"]["undefined"] == 0
+    r2 = Repo(tmp_path / "b", gates=ALL_GATES)
+    r2.start(extra=["--delegate"])
+    res = r2.play(until="PLAN-AGENTS-GATE", modes={"PLAN-AGENTS:1": "needs_owner"})
+    assert res.json["step"] == "PLAN-AGENTS-GATE" and r2.state()["pending_question"]
+    res = r2.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip the step")
+    assert res.code == 2 and res.json["error"] == "PLAN-AGENTS already ran; its gate PLAN-AGENTS-GATE is pending: override the gate instead", "R4-m5"
+    res = r2.run("override", "--steps", "PLAN-AGENTS-GATE", "--quote", "skip the gate")
+    assert res.code == 0
+    res = r2.play(until="PLAN-TO-SPEC-GATE")
+    assert res.json["step"] == "PLAN-TO-SPEC-GATE" and r2.state()["pending_question"] is None
+    assert r2.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-GATE-1.json")["source"] == "override"
+    line = f"- PLAN-AGENTS assumed: {stub_agent.ASSUMPTION} (runner: PLAN-AGENTS-GATE skipped (override); question: {stub_agent.QUESTION})"
+    assert line in r2.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md").splitlines() and r2.state()["judgment_calls"]["undefined"] == 1
+    assert "PLAN-AGENTS's question stands on its assumption: PLAN-AGENTS-GATE was skipped" in history(r2)
+    assert stub_agent.QUESTION not in open(res.json["prompt_file"], encoding="utf-8").read()
+
+
 def test_override_of_the_pending_step_discards_its_unrecorded_work(tmp_path):
     """Overriding the step whose attempt is pending reverts the agent's unrecorded files instead of committing them unchecked (R4-M1)."""
     r = Repo(tmp_path)
