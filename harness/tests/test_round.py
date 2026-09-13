@@ -97,6 +97,10 @@ def test_action_shape_prompt_commit_and_record_command(tmp_path):
     assert st["attempt_pending"]["step"] == "PLAN-AGENTS" and st["step_starts"]["PLAN-AGENTS"] == r.head().replace(r.head(), st["step_starts"]["PLAN-AGENTS"])
     again = r.next()
     assert again.json["prompt_file"] == a["prompt_file"] and r.log()[0] == "round 0001: PLAN-AGENTS attempt 1 prompt"
+    s = repo(tmp_path / "with space")
+    s.start()
+    a = s.next().json
+    assert f' --root "{s.root}" record ' in a["record_command"] and a["record_command"].endswith(f'--result "{a["result_file"]}"')
 
 
 def test_prompts_render_from_prose_commit_and_config_live(tmp_path):
@@ -148,7 +152,8 @@ def assert_round_files(r, gates_on):
             if gates_on:
                 assert verdict["source"] == "gate" and r.exists(f"{folder}/PROMPTS/{name}-1.txt")
                 if pipeline.step(pipeline.producer_of(name)).kind == "code":
-                    assert r.exists(f"{folder}/PROMPTS/{name}-1.diff") and r.read(f"{folder}/PROMPTS/{name}-1.diff").startswith("diff --git")
+                    diff = r.read(f"{folder}/PROMPTS/{name}-1.diff")
+                    assert diff.startswith("diff --git") and "archives/rounds" not in diff, "the gate's diff holds the artifact, not the round folder"
             else:
                 assert verdict["source"] == "disabled" and not r.exists(f"{folder}/PROMPTS/{name}-1.txt")
     assert st["status"] == "finished" and st["landed_at"] and st["tests_frozen_at"]
@@ -270,3 +275,4 @@ def test_render_command_on_a_round_has_no_side_effects(tmp_path):
     assert r.head() == head and r.dirty() == ""
     res = r.run("render", "--step", "CHAT-TO-PLAN")
     assert res.code == 0 and "STEP: CHAT-TO-PLAN" in res.json["prompt"] and "# TODO" in res.json["prompt"]
+    assert "harness/DRAFT-PLAN.json: JSON object with" in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"

@@ -143,7 +143,6 @@ def side_effects(step, keys, mode, env):
     if mode == "touch_tests":
         append(harness, TESTS[0], "\n# STUB-TOUCHED-FROZEN-TEST\n")
     if mode == "rewrite_judgment":
-        files = prompt_json(text_of(keys), "Append one line per judgment call to") if False else None
         path = judgment_file(keys, "DEFINED")
         with open(path, encoding="utf-8") as f:
             lines = f.read().splitlines()
@@ -163,10 +162,6 @@ def side_effects(step, keys, mode, env):
     for n, key in ((int(d), "DEFINED"), (int(u), "UNDEFINED")):
         for i in range(n):
             append(harness, judgment_file(keys, key), f"- {step} attempt {keys.get('ATTEMPT')}: STUB-{key}-CALL {i + 1}\n")
-
-
-def text_of(keys):
-    return ""
 
 
 def judgment_file(keys, kind):
@@ -205,7 +200,7 @@ def gate_message(step, text, mode, env):
 
 
 def producer_message(step, text, mode, env):
-    ids, _ = open_ids(text, "Findings to resolve (every gate or owner finding id must appear in your resolutions as fixed, disputed or deferred; a settled id cannot be disputed; a mechanical finding needs no resolution entry, fix it):")
+    ids, _ = open_ids(text, "Findings to resolve (every gate or owner finding id must appear in your resolutions as fixed, disputed or deferred; an omitted id counts as fixed; a settled id cannot be disputed; a mechanical finding needs no resolution entry, fix it):")
     status = {"dispute": "disputed", "deferred": "deferred"}.get(mode, "fixed")
     resolutions = {i: {"status": status, "reason": f"stub {status}"} for i in ids}
     d, u = (env.get("STUB_JUDGMENT") or "0,0").split(",")

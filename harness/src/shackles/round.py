@@ -5,7 +5,7 @@ import os
 import re
 import shutil
 
-from . import checks, config as configmod, gitops, landing, ledger, owner as ownermod, pipeline, procs, prompts, schemas, specguard
+from . import agentdefs, checks, config as configmod, gitops, landing, ledger, owner as ownermod, pipeline, procs, prompts, schemas, specguard
 from .gitops import RunnerError
 
 NOTE_CAP = 2000
@@ -178,6 +178,10 @@ class Round:
         out = gitops.git(self.root, "rev-list", "-n", "1", "--fixed-strings", f"--grep={message}", "HEAD", check=False)
         return out or None
 
+    def runner_head(self):
+        """The runner's newest commit (every one is titled `round NNNN: ...`): anything HEAD has beyond it, an agent committed."""
+        return gitops.git(self.root, "rev-list", "-n", "1", f"--grep=^round {self.id}: ", "HEAD", check=False) or None
+
     # ---- pipeline helpers --------------------------------------------------
     def prose_names(self):
         if self._prose_names is None:
@@ -306,10 +310,8 @@ class Round:
         budget = budgets.get(name, 0.0)
         producer_budget = budgets.get(producer, 0.0)
         previous = "none"
-        if s.kind == "gate":
-            rel = f"{self.paths['results']}/{producer}-{st['attempts'].get(producer, 0)}.json"
-        else:
-            rel = f"{self.paths['results']}/{name}-{attempt - 1}.json"
+        producer_attempt = st["attempts"].get(producer, 0) if s.kind == "gate" else attempt - 1
+        rel = f"{self.paths['results']}/{producer}-{producer_attempt}.json"
         if os.path.exists(self.abs(rel)):
             previous = procs.read_text(self.abs(rel)).strip()
         findings = self.findings_for(producer, OPEN if s.kind != "gate" else ("open", "disputed", "settled", "fixed", "deferred", "withdrawn"))
@@ -325,7 +327,7 @@ class Round:
             findings=findings, carried=st["carried"], previous=previous, question=question, conflicts=conflicts,
             next_finding_id=self.next_finding_id(), frozen=bool(st.get("tests_frozen_at")), sibling_paths=st.get("sibling_paths") or [],
             changed_tests=checks.changed_tests(self.cfg, self.root, st["base_commit"], spec.get("testPaths") or []) if producer == "TESTS-TO-SUITE" else [],
-            sub_agents=self.sub_agents_for(name), merge=merge)
+            sub_agents=self.sub_agents_for(name), merge=merge, producer_attempt=producer_attempt)
 
     def render_step(self, name, attempt, write=True):
         st = self.state
@@ -340,8 +342,8 @@ class Round:
             procs.write_text(self.abs(f"{self.paths['prompts']}/{name}-{attempt}.txt"), text)
             producer = pipeline.producer_of(name)
             if s.kind == "gate" and pipeline.step(producer).kind == "code":
-                declared = [self.repo_rel(p) for p in self.step_context(producer, attempt)["write_paths"]]
-                diff = gitops.git(self.root, "diff", st["step_starts"].get(producer, st["base_commit"]), "HEAD", "--", *declared, check=False)
+                declared = [self.repo_rel(p) for p in self.step_context(producer, attempt)["write_paths"] if p != self.paths["folder"]]
+                diff = gitops.git(self.root, "diff", st["step_starts"].get(producer, st["base_commit"]), "HEAD", "--", *declared, check=False) if declared else ""
                 procs.write_text(self.abs(f"{self.paths['prompts']}/{name}-{attempt}.diff"), diff + ("\n" if diff and not diff.endswith("\n") else ""))
             if unresolved:
                 self.flag("unresolved tokens in " + name + ": " + ", ".join(sorted(set(unresolved))))
@@ -396,7 +398,7 @@ class Round:
         self.history(f"CHECKPOINT {kind} at {step}\n\n{st['checkpoint']['message']}")
 
     def resume_commands(self, kind):
-        runner = f"py -3.13 {os.path.join(self.harness, 'src', 'run.py')} --root {self.root}"
+        runner = f"py -3.13 {procs.quoted(os.path.join(self.harness, 'src', 'run.py'))} --root {procs.quoted(self.root)}"
         return [f"{runner} {HINTS[c]}" for c in RESUME.get(kind, ["approve", "abandon"])]
 
     def checkpoint_message(self):
@@ -433,14 +435,19 @@ class Round:
         kind = "gate" if s.kind == "gate" else "producer"
         alias = self.cfg.model_alias(rung.get("model", ""))
         runner = os.path.join(self.harness, "src", "run.py")
-        record = f"py -3.13 {runner} --root {self.root} record --step {name} --attempt {attempt} --result {ctx['result_file']}"
+        record = (f"py -3.13 {procs.quoted(runner)} --root {procs.quoted(self.root)} record --step {name} --attempt {attempt} "
+                  f"--result {procs.quoted(ctx['result_file'])}")
         warnings = list((st.get("attempt_pending") or {}).get("warnings") or [])
         running = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if not procs.same_path(running, os.path.join(self.harness, "src")):
             warnings.append(f"runner_skew: this command runs {running}; drive the round with {runner}")
+        agent_type = f"shackles-{kind}-{rung_name}"
+        if not os.path.exists(os.path.join(os.getcwd(), agentdefs.DIR, agent_type + ".md")):
+            warnings.append(f"agent_type: no {procs.posix(agentdefs.DIR)}/{agent_type}.md under {os.getcwd()}, so a session started here has no such "
+                            f"type (definitions register at session start from the session's project directory); spawn general-purpose with model {alias}")
         return {"kind": kind, "round": self.id, "step": name, "attempt": attempt, "prompt_file": ctx["prompt_file"],
                 "result_file": ctx["result_file"], "artifact": ctx["artifact"], "diff_file": ctx["diff_file"],
-                "agent": rung_name, "agent_type": f"shackles-{kind}-{rung_name}", "model": rung.get("model"), "model_alias": alias,
+                "agent": rung_name, "agent_type": agent_type, "model": rung.get("model"), "model_alias": alias,
                 "effort": rung.get("effort"), "budget_usd": ctx["budget"], "budget_cap_usd": ctx["budget_cap"],
                 "max_turns": ctx["max_turns"], "wall_clock_hours": ctx["wall_clock_hours"], "sub_agents": ctx["sub_agents"],
                 "tools": "read-only" if kind == "gate" else "all", "worktree": self.root, "runner": runner,
@@ -540,10 +547,10 @@ class Round:
         st = self.state
         pending = st.get("attempt_pending")
         merging = self.merging()
-        expected = bool(st.get("merge_pending")) and pending and pending["step"] == "SPEC-TO-IMPLEMENTATION"
+        expected = bool(st.get("merge_pending")) and st["step"] == "SPEC-TO-IMPLEMENTATION"
         notes = []
         if merging and not expected:
-            gitops.git(self.root, "merge", "--abort", check=False)
+            gitops.abort_merge(self.root)
             st["infra_errors"][st["step"]] = st["infra_errors"].get(st["step"], 0) + 1
             notes.append("unexpected merge in progress: aborted (infrastructure error)")
         elif merging:
@@ -552,7 +559,7 @@ class Round:
         if dirty:
             if pending and not discard:
                 allowed = self.pending_allowed()
-                if all(any(procs.under(p, a) for a in allowed if a) for _, p in dirty):
+                if any(any(procs.under(p, a) for a in allowed if a) for _, p in dirty):
                     raise RunnerError(f"uncommitted work for {pending['step']} attempt {pending['attempt']}: record it, or next --discard", 2)
             scope = [self.repo_rel(".")] + [self.repo_rel(p) for p in self.cfg.living_paths()]
             scope = [s for s in dict.fromkeys(scope) if s]
@@ -625,12 +632,13 @@ class Round:
 
     def accept_producer(self, producer):
         st = self.state
-        if producer == "PLAN-TO-SPEC" and not st.get("words_charged", {}).get("spec"):
-            path = self.abs(self.paths["specProse"])
-            text = procs.read_text(path) if os.path.exists(path) else ""
-            ledger.append(st, producer, st["attempts"].get(producer, 0), ledger.word_cost(self.cfg, "specCostPerWord", text), "owner", f"{procs.words(text)} spec words")
-            st.setdefault("words_charged", {})["spec"] = True
+        if producer == "PLAN-TO-SPEC":
             st["inputs_hash"]["SPEC"] = self.spec_hash()
+            if not st.get("words_charged", {}).get("spec"):
+                path = self.abs(self.paths["specProse"])
+                text = procs.read_text(path) if os.path.exists(path) else ""
+                ledger.append(st, producer, st["attempts"].get(producer, 0), ledger.word_cost(self.cfg, "specCostPerWord", text), "owner", f"{procs.words(text)} spec words")
+                st.setdefault("words_charged", {})["spec"] = True
         elif producer == "SPEC-TO-TESTS" and producer not in st["overrides"]:
             st["tests_frozen_at"] = self.head()
             self.history(f"tests frozen at {st['tests_frozen_at'][:12]}")
@@ -747,7 +755,19 @@ class Round:
         usd, source, note_text = ledger.agent_cost(self.cfg, rung, cost, tokens, spawns, self.budgets().get(step, 0.0))
         result_rel = f"{self.paths['results']}/{step}-{attempt}"
         exclude = (self.repo_rel(result_rel + ".json"), self.repo_rel(result_rel + ".meta.json"))
-        snapshot = checks.dirty(self.root, exclude)
+        merge = bool(st.get("merge_pending")) and step == "SPEC-TO-IMPLEMENTATION"
+        pc = self.runner_head()
+        moved = bool(pc) and self.head() != pc
+        if moved and merge:
+            gitops.git(self.root, "reset", "-q", "--hard", pc)
+            return self.infra(step, attempt, text, ["M0: HEAD moved during the merge attempt; the agent's commit was discarded"],
+                              usd, source, note_text, push, self.snapshot(exclude, False))
+        if moved:
+            gitops.git(self.root, "reset", "-q", "--soft", pc)
+            gitops.git(self.root, "reset", "-q")
+        snapshot = self.snapshot(exclude, merge)  # taken before this record writes anything, so its own HISTORY lines are never strays
+        if moved:
+            self.flag(f"M0: HEAD moved during {step} attempt {attempt}; the agent's commit was undone (soft reset)")
         if not errors and kind == "gate" and snapshot:
             errors = ["G1: the gate run changed files; discarded"]
         if errors:
@@ -759,16 +779,6 @@ class Round:
         st["attempts"][step] = attempt
         before = pending.get("judgment") or st["judgment_calls"]
         st["attempt_pending"] = None
-        pc = self.prompt_commit(step, attempt)
-        merge = bool(st.get("merge_pending")) and step == "SPEC-TO-IMPLEMENTATION"
-        if pc and self.head() != pc:
-            if merge:
-                gitops.git(self.root, "merge", "--abort", check=False)
-                return self.infra(step, attempt, text, ["M0: HEAD moved during the merge attempt; the merge is re-established by next"], 0, "agent-cli", "", push, snapshot)
-            gitops.git(self.root, "reset", "-q", "--soft", pc)
-            gitops.git(self.root, "reset", "-q")
-            snapshot = checks.dirty(self.root, exclude)
-            self.flag(f"M0: HEAD moved during {step} attempt {attempt}; the agent's commit was undone (soft reset)")
         if kind == "gate":
             obj, notes = schemas.normalize_findings(obj, step, attempt, self.next_finding_id(), self.withdrawn_quotes(), int(self.cfg["findingQuoteMaxChars"]))
             for n in notes:
@@ -795,11 +805,23 @@ class Round:
         return {"kind": "recorded", "round": self.id, "step": step, "attempt": attempt, "next_step": st["step"],
                 "spend": self.spend(), "judgment_calls": after, "warnings": self.notes}, 0
 
+    def snapshot(self, exclude, merge):
+        """The dirty tree; on a merge attempt only what differs from the automerge tree, so the sibling's changes never count."""
+        items = checks.dirty(self.root, exclude)
+        if merge and self.merging():
+            out = gitops.git(self.root, "diff", "--name-only", "-z", self.state["merge_pending"]["automerge_tree"], check=False)
+            changed = {procs.posix(p) for p in out.split("\0") if p}
+            items = [(xy, p) for xy, p in items if p in changed or "?" in xy]
+        return items
+
     def infra(self, step, attempt, text, errors, usd, source, note, push, snapshot):
         st = self.state
         pending = st["attempt_pending"]
         pending["infra"] = pending.get("infra", 0) + 1
         st["infra_errors"][step] = st["infra_errors"].get(step, 0) + 1
+        if self.merging():
+            gitops.abort_merge(self.root)
+            errors = errors + ["the merge is aborted and re-established by next"]
         checks.revert(self.root, snapshot)
         raw = self.abs(f"{self.paths['results']}/{step}-{attempt}.raw-{pending['infra']}.txt")
         procs.write_text(raw, text)
@@ -819,9 +841,17 @@ class Round:
     def withdrawn_quotes(self):
         return {" ".join(e.get("quote", "").split()) for e in self.state["findings_ledger"].values() if e.get("status") == "withdrawn"}
 
-    def apply_resolutions(self, step, obj):
+    def apply_resolutions(self, step, attempt, obj):
         st = self.state
-        for key, res in (obj.get("resolutions") or {}).items():
+        resolutions = obj.get("resolutions") or {}
+        if obj.get("status") in ("DONE", "NEEDS-OWNER"):
+            omitted = [k for k, e in st["findings_ledger"].items()
+                       if e.get("step") == step and e.get("source") in ("gate", "owner") and e.get("status") in OPEN and k not in resolutions]
+            for k in omitted:
+                st["findings_ledger"][k].update(status="fixed", resolution={"status": "fixed", "reason": "omitted from resolutions"})
+            if omitted:
+                self.flag(f"{step} attempt {attempt}: findings omitted from resolutions count as fixed: {', '.join(omitted)}")
+        for key, res in resolutions.items():
             e = st["findings_ledger"].get(key)
             if not e or e.get("step") != step:
                 self.flag(f"resolution for unknown finding {key} ignored")
@@ -843,7 +873,7 @@ class Round:
     def record_producer(self, step, attempt, obj, prompt_commit, merge, snapshot):
         st = self.state
         status = obj["status"]
-        self.apply_resolutions(step, obj)
+        self.apply_resolutions(step, attempt, obj)
         findings, reverted = [], []
         f4, r4 = checks.m4_judgment(self.root, prompt_commit or st["base_commit"], [self.repo_rel(self.paths["defined"]), self.repo_rel(self.paths["undefined"])])
         findings += f4
@@ -859,7 +889,7 @@ class Round:
         conflicted = [self.repo_rel(p) for p in (st.get("merge_pending") or {}).get("conflicted") or []] if merge else []
         if status in ("UPSTREAM", "BLOCKED"):
             if merge:
-                gitops.git(self.root, "merge", "--abort", check=False)
+                gitops.abort_merge(self.root)
                 st["merge_pending"] = None
             allowed = self.step_context(step, attempt)["write_paths"]
             checks.m1_strays(self.cfg, self.root, self.paths, allowed, snapshot, exempt=specguard.spec_files(self.root))
@@ -879,7 +909,10 @@ class Round:
         f1, r1 = checks.m1_strays(self.cfg, self.root, self.paths, allowed, remaining, merge_tree=merge_tree, exempt=specguard.spec_files(self.root))
         findings += f1
         unresolved = bool([f for f in findings if f["id"] == "L3"])
-        if not unresolved:
+        if unresolved:
+            gitops.abort_merge(self.root)
+            self.history(f"{step} attempt {attempt}: L3, the merge is aborted; the next attempt re-establishes it")
+        else:
             self.commit_work(step, attempt, merge)
             if merge:
                 st["merge_pending"] = None
@@ -1154,8 +1187,8 @@ class Round:
         st = self.state
         if st.get("landed_at"):
             raise RunnerError("the round already landed; to skip the postmortem use override --steps POSTMORTEM", 2)
-        if gitops.ref_exists(self.root, "MERGE_HEAD"):
-            gitops.git(self.root, "merge", "--abort", check=False)
+        if self.merging():
+            gitops.abort_merge(self.root)
         st["status"], st["abandoned_at"], st["checkpoint"] = "abandoned", procs.now(), None
         st["merge_pending"] = st["resume_step"] = st["attempt_pending"] = None
         self.history(f"ABANDONED: {reason}")
@@ -1278,6 +1311,8 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
         approval.update({"mode": "delegated", "through": through or approval.get("through")})
     approval.setdefault("source", "plan")
     if no_branch:
+        if not procs.same_path(main_root, root):
+            raise RunnerError(f"--no-branch runs in the main checkout only; {os.path.abspath(root)} is a linked worktree of {main_root}", 2)
         rid = (local_round_ids(cfg) or [0])[-1] + 1
         wt = os.path.abspath(root)
         branch_name = branch or gitops.current_branch(root) or "HEAD"
@@ -1289,11 +1324,20 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
             raise RunnerError(f"worktreeDir {cfg['worktreeDir']} is not gitignored; add `{cfg['worktreeDir'].rstrip('/')}/` to .gitignore", 2)
         if not gitops.git_ok(root, "ls-remote", "--exit-code", "origin", "HEAD"):
             raise RunnerError("origin is not reachable (git ls-remote origin HEAD failed)", 1)
+        gitops.git(root, "fetch", "-q", "origin")
+        target = f"origin/{cfg['mainBranch']}"
+        stale = checks.e1_spec_edits(root, target, files + [specguard.SPEC_YAML, specguard.BASELINE])
+        if stale:
+            raise RunnerError(f"spec files differ from {target}, which the round starts from: {', '.join(sorted(stale))}; "
+                              "commit and push them first, or use --no-branch", 2)
         rid, branch_name = landing.claim(root, cfg, branch)
         wt = os.path.join(main_root, *cfg["worktreeDir"].strip("/").split("/"), f"round-{cfg.round_id(rid)}")
         if os.path.exists(wt) or gitops.branch_exists(root, branch_name):
             raise RunnerError(f"worktree {wt} or local branch {branch_name} already exists; the claim {branch_name} stays claimed, rerun start", 2)
-        gitops.git(root, "worktree", "add", "-q", "-b", branch_name, wt, f"origin/{cfg['mainBranch']}")
+        gitops.git(root, "worktree", "add", "-q", "-b", branch_name, wt, target)
+        local = os.path.join(root, configmod.HARNESS_DIR, configmod.LOCAL_FILE)
+        if os.path.exists(local):
+            shutil.copyfile(local, os.path.join(wt, configmod.HARNESS_DIR, configmod.LOCAL_FILE))
         mode = "worktree"
     wcfg = configmod.load(wt)
     r = Round(wt, wcfg, rid)
@@ -1351,7 +1395,7 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
             raise RunnerError(f"push of {branch_name} failed: {(proc.err or proc.out).strip()[-300:]}", 1)
     runner = os.path.join(wt, "harness", "src", "run.py")
     return {"round": rid, "id": r.id, "folder": r.paths["folder"], "branch": branch_name, "worktree": wt, "runner": runner,
-            "record_hint": f"py -3.13 {runner} --root {wt} next"}
+            "record_hint": f"py -3.13 {procs.quoted(runner)} --root {procs.quoted(wt)} next"}
 
 
 def open_round(root, rid=None):

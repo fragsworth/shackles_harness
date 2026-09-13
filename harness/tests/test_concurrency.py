@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+import fixtures
 import stub_agent
 from fixtures import PLAN, Repo
 from shackles import gitops, procs
@@ -109,6 +110,38 @@ def test_preconditions(tmp_path):
     assert_nothing_created(r)
 
 
+def test_worktree_start_refuses_spec_files_that_differ_from_origin(tmp_path):
+    r = with_origin(tmp_path)
+    r.write("harness/project.yaml", r.read("harness/project.yaml").replace("PLAN-AGENTS-GATE: 0", "PLAN-AGENTS-GATE: 1"))
+    res = r.start(no_branch=False, extra=["--accept-spec"])
+    assert res.code == 2 and "differ from origin/main" in res.json["error"] and "harness/project.yaml" in res.json["error"]
+    assert r.origin.branches() == ["main"] and not os.path.exists(os.path.join(r.root, ".claude", "worktrees"))
+    assert r.run("spec", "accept", "--note", "gate on").code == 0
+    r.git("add", "-A")
+    r.git("commit", "-q", "-m", "gate on")
+    res = r.start(no_branch=False)
+    assert res.code == 2 and "differ from origin/main" in res.json["error"], "committed but not pushed is still not what the round starts from"
+    r.git("push", "-q", "origin", "main")
+    res, v = start_wt(r)
+    assert v.run("config").json["config"]["gates"]["PLAN-AGENTS-GATE"] == 1 and v.run("spec", "status").json["clean"]
+
+
+def test_worktree_round_reads_the_local_yaml_copied_at_start(tmp_path):
+    r = with_origin(tmp_path)
+    fixtures.local_yaml(r.root, {"infraRetries": 7})
+    res, v = start_wt(r)
+    out = v.run("config").json
+    assert out["config"]["infraRetries"] == 7 and out["sources"]["infraRetries"] == "local.yaml"
+    assert v.git("ls-files", "harness/local.yaml") == "" and r.origin.sha("round/0001") == v.head()
+
+
+def test_no_branch_is_refused_from_a_linked_worktree(tmp_path):
+    r = with_origin(tmp_path)
+    res, v = start_wt(r)
+    res = v.start(no_branch=True)
+    assert res.code == 2 and "main checkout only" in res.json["error"] and "round-0001" in res.json["error"]
+
+
 def test_worktree_round_reads_the_owner_log_from_main_and_pushes_from_the_worktree(tmp_path):
     r = with_origin(tmp_path)
     r.owner("thinking", at="2026-01-01T00:30:00Z")
@@ -147,11 +180,12 @@ def test_fence_another_runner_owns_the_round(tmp_path):
     assert rec.code == 1 and rec.json["error"] == "another runner owns this round (push rejected)"
 
 
-def sibling_pushes(r, rel, text, branch="main", clone="sib"):
+def sibling_pushes(r, rel, text, branch="main", clone="sib", extra=None):
     b = r.clone(clone)
     b.git("fetch", "-q", "origin")
     b.git("checkout", "-q", "main")
-    b.write(rel, text)
+    for path, content in dict(extra or {}, **{rel: text}).items():
+        b.write(path, content)
     b.git("add", "-A")
     b.git("commit", "-q", "-m", f"sibling: {rel}")
     if branch != "main":
@@ -222,8 +256,14 @@ def test_reject_all_on_main_leaves_the_round_at_landing(tmp_path):
     assert res.code == 0 and v.state()["landed_at"] and r.origin.sha("main") == v.git("rev-parse", "refs/tags/round/0001-landed^{commit}")
 
 
+MORE_TEST = ("import os, sys, unittest\nsys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src'))\n"
+             "from toy import text\n\n\nclass MoreTest(unittest.TestCase):\n    def test_shout_again(self):\n        self.assertEqual(text.shout('ab'), 'AB')\n")
+SIBLING_FILES = {"harness/docs/SIBLING.md": "# a document the sibling added\n", "tests/toy/test_more.py": MORE_TEST}
+
+
 def conflicting_sibling(r):
-    return sibling_pushes(r, "src/toy/text.py", "def shout(text):\n    return str(text).upper()\n")
+    """A conflict in src/toy/text.py plus two clean additions outside implPaths: one under the frozen tests, one under docs."""
+    return sibling_pushes(r, "src/toy/text.py", "def shout(text):\n    return str(text).upper()\n", extra=SIBLING_FILES)
 
 
 def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
@@ -239,31 +279,47 @@ def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
     assert st["merge_pending"]["conflicted"] == ["../src/toy/text.py"] and st["resume_step"] == "LANDING"
     assert st["failures"]["SPEC-TO-IMPLEMENTATION"] == 1 and st["round_retries"] == 1
     assert gitops.ref_exists(v.root, "MERGE_HEAD") and "<<<<<<<" in v.read("src/toy/text.py")
-    dirty = [p for _, p in gitops.status_paths(v.root)]
-    assert dirty and all(p == "src/toy/text.py" for p in dirty)
+    assert {p for _, p in gitops.status_paths(v.root)} == {"src/toy/text.py", *SIBLING_FILES}
     prompt = open(res.json["prompt_file"], encoding="utf-8").read()
     assert 'MERGE_IN_PROGRESS: ["../src/toy/text.py"]' in prompt and '"../src/toy/text.py"' in prompt.split("WRITE_PATHS:")[1].splitlines()[0]
     again = v.next()
     assert again.json["prompt_file"] == res.json["prompt_file"] and gitops.ref_exists(v.root, "MERGE_HEAD")
-    rec = v.act(again.json, "pass")
+    rec = v.act(again.json, "garbage")
+    assert rec.code == 2 and rec.json["kind"] == "invalid" and not gitops.ref_exists(v.root, "MERGE_HEAD") and v.dirty() == ""
+    res = v.next()
+    assert res.json["attempt"] == 2 and gitops.ref_exists(v.root, "MERGE_HEAD") and "<<<<<<<" in v.read("src/toy/text.py"), "re-established"
+    stub_agent.resolve_markers(v.root + "/harness", "../src/toy/text.py")
+    v.git("add", "-A")
+    v.git("commit", "-q", "-m", "an agent concludes the merge itself")
+    rec = v.record("SPEC-TO-IMPLEMENTATION", 2, {"status": "DONE", "notes": "committed it myself"})
+    assert rec.code == 2 and rec.json["errors"][0].startswith("M0") and not gitops.ref_exists(v.root, "MERGE_HEAD") and v.dirty() == ""
+    assert v.git("log", "-1", "--format=%s") == "round 0001: SPEC-TO-IMPLEMENTATION attempt 2 invalid result" and "str(text)" not in v.read("src/toy/text.py")
+    res = v.next()
+    assert res.json["attempt"] == 2 and gitops.ref_exists(v.root, "MERGE_HEAD") and "<<<<<<<" in v.read("src/toy/text.py"), "re-established again"
+    rec = v.act(res.json, "pass")
     assert rec.code == 0
     l3 = v.json(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-2.mechanical.json")["findings"]
-    assert [f["id"] for f in l3] == ["L3"] and gitops.ref_exists(v.root, "MERGE_HEAD")
+    assert [f["id"] for f in l3] == ["L3"] and not gitops.ref_exists(v.root, "MERGE_HEAD") and v.dirty() == "", "L3 aborts, the record is committed"
+    assert v.state()["merge_pending"] and "L3, the merge is aborted" in v.read(FOLDER + "/HISTORY.md")
     res = v.next()
-    assert res.json["attempt"] == 3 and gitops.ref_exists(v.root, "MERGE_HEAD")
+    assert res.json["attempt"] == 3 and gitops.ref_exists(v.root, "MERGE_HEAD") and "<<<<<<<" in v.read("src/toy/text.py")
+    assert v.exists(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-2.mechanical.json") and v.exists(FOLDER + "/RESULTS/SPEC-TO-IMPLEMENTATION-2.json")
+    assert v.state()["infra_errors"] == {"SPEC-TO-IMPLEMENTATION": 2} and "unexpected merge" not in v.read(FOLDER + "/HISTORY.md")
     stub_agent.write(v.root + "/harness", "../stray.txt", "STUB-STRAY\n")
     rec = v.act(res.json, "resolve")
     assert rec.code == 0, rec
     m1 = v.json(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-3.mechanical.json")["findings"]
-    assert [f["id"] for f in m1] == ["M1"] and "stray.txt" in m1[0]["quote"] and not v.exists("stray.txt")
+    assert [f["id"] for f in m1] == ["M1"] and m1[0]["quote"] == "stray.txt" and not v.exists("stray.txt"), "the sibling's files are not strays"
     merge_commit = v.git("rev-list", "-n", "1", "--merges", "HEAD")
     assert merge_commit and not gitops.ref_exists(v.root, "MERGE_HEAD") and v.state()["merge_pending"] is None
     assert len(v.git("log", "-1", "--format=%P", merge_commit).split()) == 2
     res = v.play(modes={"SPEC-TO-IMPLEMENTATION:4": "noop"})
     assert res.json["kind"] == "done", res
-    assert v.state()["landed_at"] and r.origin.sha("main") == v.head()
+    assert v.state()["landed_at"] and r.origin.sha("main") == v.head() and v.dirty() == ""
     text = v.read("src/toy/text.py")
     assert "whisper" in text and "str(text)" in text
+    assert all(v.read(p) == content for p, content in SIBLING_FILES.items()), "the sibling's additions land intact"
+    assert v.state()["failures"]["SPEC-TO-IMPLEMENTATION"] == 3, "L1, L3 and M1; nothing spurious"
 
 
 def test_hand_merge_lands_without_a_command(tmp_path):

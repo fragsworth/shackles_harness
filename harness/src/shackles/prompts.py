@@ -113,6 +113,8 @@ def artifact_contract(name, paths):
     if s.artifact == "postmortem":
         return f"{paths['postmortem']}: non-empty prose, plain English"
     schema = schemas.ARTIFACT_SCHEMA.get(s.artifact)
+    if s.kind == "plan":
+        return schemas.describe(schema)
     text = f"{paths[s.artifact]}: {schemas.describe(schema)}" if schema else paths.get(s.artifact, "none")
     if s.artifact == "spec":
         text += f"; and {paths['specProse']}: the spec body the owner reads, plain English, non-empty"
@@ -122,7 +124,7 @@ def artifact_contract(name, paths):
 def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, budget=0.0, budget_cap=0.0,
                  retry_cost=0.0, rung=None, gate_runs=False, overrides=(), delegated=False, findings=(), carried=(),
                  previous="none", question="none", conflicts=(), next_finding_id=1, frozen=False, sibling_paths=(),
-                 changed_tests=(), sub_agents=0, merge=False, verify_timeout=None):
+                 changed_tests=(), sub_agents=0, merge=False, verify_timeout=None, producer_attempt=None):
     s = pipeline.step(name)
     spec = spec or {}
     rung_name, agent = rung or (cfg["maxAgent"], cfg.agents.get(cfg["maxAgent"], {}))
@@ -162,7 +164,8 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
     if s.kind == "gate":
         if producer_step.artifact:
             inputs = [paths[producer_step.artifact]] + ([paths["specProse"]] if producer_step.artifact == "spec" else []) + inputs
-        inputs += [paths["defined"], paths["undefined"], f"{paths['results']}/{producer}-{attempt}.json"]
+        inputs += [paths["defined"], paths["undefined"],
+                   f"{paths['results']}/{producer}-{attempt if producer_attempt is None else producer_attempt}.json"]
     inputs = list(dict.fromkeys(inputs))
     nxt = pipeline.next_after(gate or name) if s.kind == "gate" or gate is None else gate
     review = " after a review checkpoint with the owner" if (name in cfg["checkpointsAfter"] or (gate in cfg["checkpointsAfter"] and not gate_runs)) and not delegated else ""

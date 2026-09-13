@@ -73,7 +73,7 @@ def test_sandbox_builds_and_a_stub_round_finishes_there(tmp_path):
     start = sb.start(no_branch=False, extra=["--delegate"])
     assert start.code == 0, start
     v = sb.view(start.json["worktree"])
-    fixtures.local_yaml(v.root, {"agentCommand": fixtures.stub_command()})
+    assert v.run("config").json["sources"]["agentCommand"] == "local.yaml", "start copies local.yaml into the worktree"
     res = v.run("run", "--until", "done", env={"STUB_ARCHIVE": "1"})
     assert res.code == 0 and res.json["kind"] == "done" and res.json["main_synced"], res
     assert sb.origin.sha("main") == v.head()

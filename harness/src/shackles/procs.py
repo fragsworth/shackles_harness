@@ -160,6 +160,11 @@ def posix(path):
     return path.replace("\\", "/")
 
 
+def quoted(path):
+    """A path as a command-line argument: double-quoted when it contains a space."""
+    return f'"{path}"' if " " in path else path
+
+
 def same_path(a, b):
     return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
 

@@ -23,10 +23,12 @@ Agents write their artifact, the judgment-call files (append-only) and, for POST
 `archives/rounds/index.jsonl` gets one line per finished or abandoned round; `.gitattributes` merges it with `merge=union`.
 Prose is pinned at `prose_commit` (HEAD at start) and read with `git show`; config is read live from the worktree.
 Config layering is code `DEFAULTS` < `project.yaml` < `harness/local.yaml` (gitignored); `run.py config` prints the source of each key.
+A worktree round reads the copy of `harness/local.yaml` that `start` takes from the checkout it runs in; edit the copy to change the round's local config.
 
 ## Steps and acceptance
 
 The pipeline is code (`pipeline.py`), cross-checked against `project.gates`, the prose file names and the artifact keys by lint, `doctor` and `start`.
+Renaming, adding or reordering a step or gate is loud (lint refuses `start`) and touches the step names in `pipeline.py`, `round.py`, `prompts.py`, `landing.py`, `checks.py`, `config.py`, the stub and the fixtures.
 Steps in order: CHAT-TO-PLAN, CHAT-TO-PLAN-GATE, PLAN-AGENTS, PLAN-AGENTS-GATE, PLAN-TO-SPEC, PLAN-TO-SPEC-GATE, SPEC-TO-TESTS, SPEC-TO-TESTS-GATE, SPEC-TO-IMPLEMENTATION, SPEC-TO-IMPLEMENTATION-GATE, TESTS-TO-SUITE, TESTS-TO-SUITE-GATE, CLEANUP, LANDING, POSTMORTEM, POSTMORTEM-GATE.
 CHAT-TO-PLAN is done by the driver in chat before `start`; CHAT-TO-PLAN-GATE is mechanical (PLAN.json valid, the owner's word recorded); LANDING is mechanical.
 A gate runs iff its `gates` flag is 1, its prose file exists at `prose_commit`, and neither it nor its producer is overridden; otherwise it is skipped with `FINDINGS/<GATE>-<n>.json` of source `disabled`, `override` or `no-prose`.
@@ -41,11 +43,12 @@ Attempt numbers of a step never restart, so `PROMPTS/`, `RESULTS/` and `FINDINGS
 
 `doctor` checks the environment, config, lint, drift, hook, `claude` resolution, agent definitions and renders every prompt on a fixture round; `--probe-cli` makes one capped real call.
 `config`, `render --step S [--fixture] [--raw]`, `spec status|diff|accept --note T` and `agents [--write]` read or regenerate files without touching a round.
-`start --plan F` validates the plan before any git command, refuses on spec drift unless `--accept-spec`, claims an id on origin, adds the worktree and makes the start commit; `--no-branch` runs in the current checkout.
-`next` does mechanical work until an agent run is due and prints the action, a checkpoint (exit 10) or `done`; `--discard` resets unrecorded work of the pending attempt.
+`start --plan F` validates the plan before any git command, refuses on spec drift unless `--accept-spec`, claims an id on origin, adds the worktree and makes the start commit; `--no-branch` runs in the main checkout (refused from a linked worktree).
+A worktree round starts from `origin/<mainBranch>`, so `start` refuses while a spec file, `spec.yaml` or the baseline differs from it: commit and push the change first (`--accept-spec` then covers drift that is already on origin).
+`next` does mechanical work until an agent run is due and prints the action, a checkpoint (exit 10) or `done`; `--discard` resets unrecorded work of the pending attempt, which `next` otherwise refuses to touch while any dirty path lies inside that attempt's write paths.
 `record --step S --attempt N --result F [--cost USD | --tokens N [--agent RUNG]] [--spawns K]` validates the final message, runs the checks, routes the outcome, books the cost, commits and pushes.
 `approve`, `delegate [--through STEP]`, `answer --text T`, `override --steps A,B` and `abandon --reason R` carry the owner's words in `--quote` and are verified against the owner log when it exists (`--unverified` records them with a FLAG).
-`status`, `spend [--project]`, `rounds` and `check` are read-only; `check` runs the current step's checks or the landing check phase and exits 3 on findings.
+`status`, `spend [--project]` and `rounds` are read-only; `check` writes nothing shared: it runs the current step's checks, or at LANDING merges the target into the worktree and runs verify and the suite, and exits 3 on findings.
 `run --until checkpoint|step|done` is the headless loop (next, agent command, record); `probe` and `sandbox` are the real-agent testing tools of docs/TESTING.md.
 A `record` whose push is rejected stops with `another runner owns this round (push rejected)`; any other push failure exits 1 and `next` pushes again when the branch is ahead.
 
@@ -65,7 +68,7 @@ The gate's verdict is authoritative: a PASS with blocking findings makes them no
 
 ## Findings, disputes, settlement
 
-Gate findings enter the ledger as `open`; a producer resolves each as `fixed`, `disputed` or `deferred`.
+Gate findings enter the ledger as `open`; a producer resolves each as `fixed`, `disputed` or `deferred`, and an open gate or owner finding it omits from `resolutions` counts as `fixed` with a HISTORY line.
 A disputed finding is ruled `upheld` or `withdrawn` by the next gate; upheld twice is `settled` and a further dispute is ignored with a note; withdrawn is closed and a re-raised copy (same quote) is dropped.
 `deferred` findings are carried to every later producer and to POSTMORTEM; non-blocking findings of a PASS are carried the same way.
 Mechanical findings (M*, S*, L*) are not disputable; they close when the producer's next attempt passes its checks.
@@ -119,9 +122,10 @@ Living paths are `livingSourcePaths`; `__pycache__` and `*.pyc` are excluded; ed
 Rounds start from `origin/<mainBranch>` in a worktree at `<worktreeDir>/round-NNNN` (`worktreeDir` must be gitignored) on branch `round/NNNN`, claimed by a lease push that must create the ref; `pushAttempts` bounds the claim loop.
 LANDING's check phase fetches, computes `git merge-tree --write-tree` against the target and merges cleanly or raises `L1`, then runs verify and the suite (`L2`); it never pushes, tags or charges.
 The land phase pushes `HEAD:refs/heads/<mainBranch>` in a loop of `pushAttempts`, re-running the check phase after a rejection, then books the living charge once, tags `round/NNNN-landed` and sets `landed_at`.
-On `L1` the round re-enters SPEC-TO-IMPLEMENTATION as a merge attempt: the prompt lists the conflicted files, the merge is established in the worktree, M1 and M2 are measured against the automerge tree, L3 rejects unresolved files, and the commit has two parents; acceptance returns to LANDING where the target is already contained.
+On `L1` the round re-enters SPEC-TO-IMPLEMENTATION as a merge attempt: the prompt lists the conflicted files, the merge is established in the worktree after the prompt commit, M1 and M2 see only what differs from the automerge tree (the sibling's changes never count), L3 rejects unresolved files, and the commit has two parents; acceptance returns to LANDING where the target is already contained.
 A hand merge by the owner in the worktree lands without any command; `L2` re-enters the same way without a pending merge.
-While a merge attempt is in progress the runner commits nothing but the merge commit itself: its state lives uncommitted in the worktree until the attempt's commit, and M0 is skipped for that attempt.
+A merge attempt ends in the merge commit or not at all: on L3, an invalid result, M0, UPSTREAM or BLOCKED the runner aborts the merge, commits the record as usual, and the next attempt re-establishes the merge from the conflicted state.
+The gate's `DIFF_FILE` for a code step is the diff of the producer's write paths since the step started, without the round folder.
 `sync_main` after the last commit merges `origin/<mainBranch>` and pushes in a bounded loop; a conflict leaves `main_synced: false` and the tail arrives with the next landing.
 Invariants: one round per id, nothing created before the claim wins, one worktree per round, nothing touches main before LANDING, one runner per round (the fence), main only fast-forwards, no auto-resolved conflict, one living entry per landed round, `check` writes nothing shared, agents get no push credential, crash recovery by rerun.
 Landing conflicts converge because the merge attempt is measured against the automerge tree, not against the step start.

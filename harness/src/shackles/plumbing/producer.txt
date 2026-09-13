@@ -12,7 +12,7 @@ FROZEN_PATHS: {{ step.frozen_paths }}
 MERGE_IN_PROGRESS: {{ step.conflicts }}
 Paths here are relative to HARNESS unless absolute; use absolute paths in tools. Budget for this run: ${{ step.budget }}, a target. Turns: about {{ step.max_turns }}. Wall clock: {{ step.wall_clock_hours }} h. Sub-agents you may run at once: {{ step.sub_agents }}; their cost is yours.
 Inputs, by path: {{ step.inputs }}
-Findings to resolve (every gate or owner finding id must appear in your resolutions as fixed, disputed or deferred; a settled id cannot be disputed; a mechanical finding needs no resolution entry, fix it): {{ step.findings }}
+Findings to resolve (every gate or owner finding id must appear in your resolutions as fixed, disputed or deferred; an omitted id counts as fixed; a settled id cannot be disputed; a mechanical finding needs no resolution entry, fix it): {{ step.findings }}
 Carried notes and owner answers: {{ step.carried }}
 Your previous final message: {{ step.previous }}
 Rules: create or change files only under WRITE_PATHS and the round folder {{ round.folder }}; never change FROZEN_PATHS; never run git commit, push, tag, reset, checkout, clean, merge or rebase, the runner commits your work; do not write RESULT_FILE, the driver saves your final message there. Files listed in spec.yaml are the owner's: change one only when genuinely necessary and minimally; the runner shows the owner the diff before the round lands. Append one line per judgment call to {{ round.judgment_files }}; never rewrite their existing lines.

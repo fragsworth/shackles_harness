@@ -11,7 +11,6 @@ from .gitops import RunnerError
 def add_parsers(sub):
     d = sub.add_parser("doctor", help="environment, config, lint, drift, hook, claude, every prompt rendered")
     d.add_argument("--probe-cli", action="store_true", help="one capped real claude call (costs cents)")
-    d.add_argument("--json", action="store_true", help="(the output is always JSON; kept for symmetry)")
     r = sub.add_parser("render", help="render one step's prompt without side effects")
     r.add_argument("--step", required=True, choices=pipeline.NAMES)
     r.add_argument("--attempt", type=int, default=1)
@@ -53,8 +52,7 @@ def add_parsers(sub):
             o.add_argument("--steps", required=True)
         if name == "abandon":
             o.add_argument("--reason", required=True)
-    st = sub.add_parser("status", help="where the round is")
-    st.add_argument("--json", action="store_true")
+    sub.add_parser("status", help="where the round is")
     sp = sub.add_parser("spend", help="the round's spend, or the project's with --project")
     sp.add_argument("--project", action="store_true")
     sub.add_parser("rounds", help="every round: folders, origin branches, worktrees, tags")

@@ -13,10 +13,6 @@ class RunnerError(Exception):
         self.code = code
 
 
-def set_identity(name, email):
-    IDENTITY[1], IDENTITY[3] = f"user.name={name}", f"user.email={email}"
-
-
 def git_proc(root, *args, timeout=None, env=None):
     env = procs.child_env(base=env, extra={"GIT_TERMINAL_PROMPT": "0"})
     return procs.run(["git"] + IDENTITY + [str(a) for a in args], cwd=root, env=env, timeout=timeout or TIMEOUT[0])
@@ -48,6 +44,14 @@ def git_dir(root):
 
 def merging(root, gitdir=None):
     return os.path.exists(os.path.join(gitdir or git_dir(root), "MERGE_HEAD"))
+
+
+def abort_merge(root):
+    """git merge --abort; a path the merge staged and an agent then edited is put back first, else the abort refuses."""
+    for xy, path in status_paths(root):
+        if xy[0] in "AMRC" and xy[1] in "MD":
+            git(root, "checkout", "-q", "--", path, check=False)
+    git(root, "merge", "--abort", check=False)
 
 
 def branch_exists(root, name):

@@ -217,8 +217,11 @@ def test_infra_path_garbage_then_checkpoint(tmp_path):
     res = r.next()
     assert res.json["step"] == "PLAN-AGENTS" and res.json["attempt"] == 1
     assert r.act(res.json, "fence").code == 0 and r.state()["attempts"]["PLAN-AGENTS"] == 1
+    st = r.state()
+    assert st["step"] == "PLAN-AGENTS-GATE" and st["failures"] == {} and "M0" not in history(r), "the runner's own commits are not an agent's"
+    assert r.exists(f"{FOLDER}/RESULTS/PLAN-AGENTS-1.raw-1.txt") and "INVALID RESULT" in history(r)
     res = r.next()
-    assert r.act(res.json, "prose_wrapped").code == 0
+    assert res.json["step"] == "PLAN-TO-SPEC" and r.act(res.json, "prose_wrapped").code == 0
 
 
 def test_m0_agent_commit_is_soft_reset(tmp_path):
@@ -263,11 +266,49 @@ def test_pending_work_refused_without_discard(tmp_path):
     r.start()
     a = r.next().json
     stub_agent.perform(a["prompt_file"], "pass", {})
+    r.write("stray.txt", "a stray beside the in-scope work\n")
     res = r.next()
     assert res.code == 2 and "record it, or next --discard" in res.json["error"]
-    assert r.exists(f"{FOLDER}/AGENTS-PLAN.json")
+    assert r.exists(f"{FOLDER}/AGENTS-PLAN.json") and r.exists("stray.txt"), "a stray never turns the refusal into a reset of the work"
+    assert r.state()["infra_errors"] == {}
     res = r.next("--discard")
     assert res.code == 0 and not r.exists(f"{FOLDER}/AGENTS-PLAN.json") and res.json["attempt"] == 1
+    assert r.exists("stray.txt"), "the reset is scoped to harness/ and the living paths"
+
+
+def test_reaccepted_spec_is_not_an_out_of_band_edit(tmp_path):
+    r = Repo(tmp_path)
+    r.start(extra=["--delegate"])
+    res = r.play(until="SPEC-TO-TESTS")
+    res = r.act(res.json, "upstream", env={"STUB_TARGET": "PLAN-TO-SPEC"})
+    assert res.code == 0 and r.state()["step"] == "PLAN-TO-SPEC" and r.state()["round_retries"] == 1
+    res = r.play(until="SPEC-TO-TESTS", env={"STUB_VERIFY_TIMEOUT": "121"})
+    assert res.json["step"] == "SPEC-TO-TESTS" and res.json["attempt"] == 2 and r.json(f"{FOLDER}/SPEC.json")["verifyTimeoutSeconds"] == 121
+    res = r.next()
+    assert res.json["step"] == "SPEC-TO-TESTS" and res.json["attempt"] == 2 and r.state()["round_retries"] == 1
+    assert "SPEC changed out of band" not in history(r)
+
+
+def test_findings_omitted_from_resolutions_count_as_fixed(tmp_path):
+    r = Repo(tmp_path, gates=ALL_GATES)
+    r.start()
+    res = r.play(until="PLAN-AGENTS:2", modes={"PLAN-AGENTS-GATE:1": "fail"})
+    obj = json.loads(stub_agent.perform(res.json["prompt_file"], "pass", {}))
+    assert obj.pop("resolutions") == {"F1": {"status": "fixed", "reason": "stub fixed"}}
+    rec = r.record("PLAN-AGENTS", 2, obj)
+    assert rec.code == 0 and r.state()["step"] == "PLAN-AGENTS-GATE"
+    e = r.state()["findings_ledger"]["F1"]
+    assert e["status"] == "fixed" and e["resolution"] == {"status": "fixed", "reason": "omitted from resolutions"}
+    assert "findings omitted from resolutions count as fixed: F1" in history(r)
+
+
+def test_gate_inputs_name_the_producers_own_attempt(tmp_path):
+    r = Repo(tmp_path, gates={"PLAN-AGENTS-GATE": 1})
+    r.start()
+    res = r.play(until="PLAN-AGENTS-GATE", modes={"PLAN-AGENTS:1": "bad_artifact"})
+    assert res.json["step"] == "PLAN-AGENTS-GATE" and res.json["attempt"] == 1 and r.state()["attempts"]["PLAN-AGENTS"] == 2
+    prompt = open(res.json["prompt_file"], encoding="utf-8").read()
+    assert "RESULTS/PLAN-AGENTS-2.json" in prompt and "RESULTS/PLAN-AGENTS-1.json" not in prompt
 
 
 def test_out_of_band_plan_and_spec_edits(tmp_path):

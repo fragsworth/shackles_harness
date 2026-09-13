@@ -39,7 +39,7 @@ def test_start_prints_one_json_line_and_root_is_found_from_cwd(tmp_path):
 
 def test_doctor_config_and_render_on_the_fixture(tmp_path):
     r = Repo(tmp_path)
-    proc = run_py(r.root, "doctor", "--json")
+    proc = run_py(r.root, "doctor")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     report = json.loads(proc.stdout.strip())
     assert report["errors"] == [] and report["info"]["prompts"]["PLAN-AGENTS"]["unresolved"] == []
@@ -61,7 +61,15 @@ def test_runner_skew_warning(tmp_path):
     action = json.loads(proc.stdout.strip())
     assert any(w.startswith("runner_skew") for w in action["warnings"])
     proc = run_py(r.root, "next")
-    assert not any(w.startswith("runner_skew") for w in json.loads(proc.stdout.strip())["warnings"])
+    warnings = json.loads(proc.stdout.strip())["warnings"]
+    assert not any(w.startswith("runner_skew") for w in warnings)
+    assert any(w.startswith("agent_type: no .claude/agents/shackles-producer-max.md") and "general-purpose" in w for w in warnings), \
+        "run from a folder without the definitions, the action says the type is unavailable there"
+    assert r.run("agents", "--write").code == 0
+    r.git("add", "-A")
+    r.git("commit", "-q", "-m", "agent definitions")
+    proc = run_py(r.root, "next")
+    assert not any(w.startswith("agent_type") for w in json.loads(proc.stdout.strip())["warnings"])
 
 
 def test_checkpoint_exit_code_10_and_message_on_stderr(tmp_path):
