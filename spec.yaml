@@ -4,6 +4,7 @@
 # Agents edit them minimally, only when genuinely necessary, and flag every edit loudly.
 # Paths are relative to this file.
 files:
+  - SPEC.md
   - harness/AGENTS.md
   - harness/project.yaml
   - harness/subAgents.yaml
