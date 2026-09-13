@@ -293,6 +293,12 @@ def test_delegation_from_the_plan(tmp_path):
     assert p.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "PLAN-AGENTS", "words": "delegate through PLAN-AGENTS"})).code == 0
     seen, res = drive(p, env={"STUB_ARCHIVE": "1"})
     assert seen == [("review", "PLAN-TO-SPEC-GATE"), ("review", "CLEANUP")], "a through before the spec skips no review"
+    t = repo(tmp_path / "through-alone")
+    res = t.start(extra=["--through", "PLAN-TO-SPEC"])
+    assert res.code == 2 and res.json["error"] == "--through needs --delegate or a delegated plan", "never validated and then ignored (R4-m4)"
+    assert not os.path.exists(t.folder())
+    res = t.start(plan=dict(PLAN, approval={"mode": "delegated", "through": None, "words": "delegate"}), extra=["--through", "PLAN-TO-SPEC"])
+    assert res.code == 0 and t.state()["approval"]["mode"] == "delegated" and t.state()["approval"]["through"] == "PLAN-TO-SPEC", "applied, not ignored"
 
 
 def test_delegate_at_a_checkpoint(tmp_path):

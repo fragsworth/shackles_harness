@@ -1404,6 +1404,8 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
     errors = validate_plan(cfg, plan, through or approval.get("through"), overrides)
     if errors:
         raise RunnerError("; ".join(errors), 2)
+    if through and not delegate and approval.get("mode") != "delegated":
+        raise RunnerError("--through needs --delegate or a delegated plan", 2)
     if agent and agent not in cfg.agents:
         raise RunnerError(f"--agent {agent} is not a roster key", 2)
     main_root = gitops.main_root(root)
@@ -1415,7 +1417,7 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
             raise RunnerError(f"approval words not found in the owner log after {plan.get('presented_at')}: {words!r} (pass --unverified to record them anyway)", 2)
     if not approval:
         approval = {"mode": "approved", "source": "gate-disabled"}
-    if delegate:
+    if delegate or through:
         approval.update({"mode": "delegated", "through": through or approval.get("through")})
     approval.setdefault("source", "plan")
     if no_branch:
