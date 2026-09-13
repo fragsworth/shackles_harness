@@ -28,6 +28,8 @@ ANSWER = "STUB-ANSWER: assume lowercase"
 NB_QUOTE = "STUB-NONBLOCKING-QUOTE"
 IMPL = "../src/toy/text.py"
 TESTS = ["../tests/toy/test_text.py", "../tests/toy/test_scratch.py"]
+RUNGS = {"PLAN-TO-SPEC": "max", "POSTMORTEM": "max", "PLAN-AGENTS": "medium", "TESTS-TO-SUITE": "medium"}  # the code steps run on low
+WEIGHTS = {"PLAN-TO-SPEC": 3, "SPEC-TO-TESTS": 2, "SPEC-TO-IMPLEMENTATION": 4, "CLEANUP": 2}  # of the work budget; every other step 1
 
 
 def canned(name):
@@ -72,14 +74,17 @@ def write_artifact(step, keys, text, mode, env):
         return
     if step == "PLAN-AGENTS":
         rows = prompt_json(text, "Steps this round, with their gates and whether each gate runs:") or []
+        minimum = (prompt_json(text, "Minimum shares, for the steps and gates present this round:") or {}).get("work") or {}
         present = [r["step"] for r in rows if not r.get("overridden") and r["step"] != "CHAT-TO-PLAN"]
         gated = [r["step"] for r in rows if r.get("gate_runs") and r["gate"] != "CHAT-TO-PLAN-GATE" and not r.get("overridden")]
-        plan = {"round": rnd, "agents": {p: env.get("STUB_RUNG", "max") for p in present},
-                "shares": {"work": {p: round(1.0 / len(present), 6) for p in present},
-                           "gates": {p: round(1.0 / len(gated), 6) for p in gated} if gated else {}},
+        spent = {k: v for k, v in minimum.items() if k == "CHAT-TO-PLAN"}  # booked at start, as the prompt says: listed so the map sums to 1
+        total = sum(WEIGHTS.get(p, 1) for p in present) or 1
+        work = dict(spent, **{p: round((1.0 - sum(spent.values())) * WEIGHTS.get(p, 1) / total, 6) for p in present})
+        plan = {"round": rnd, "agents": {p: env.get("STUB_RUNG") or RUNGS.get(p, "low") for p in present},
+                "shares": {"work": work, "gates": {p: round(1.0 / len(gated), 6) for p in gated} if gated else {}},
                 "subAgents": {}, "notes": "STUB-AGENTS-PLAN-NOTES"}
         if present:
-            plan["shares"]["work"][present[-1]] = round(1.0 - sum(v for k, v in plan["shares"]["work"].items() if k != present[-1]), 6)
+            plan["shares"]["work"][present[-1]] = round(1.0 - sum(v for k, v in work.items() if k != present[-1]), 6)
         if gated:
             plan["shares"]["gates"][gated[-1]] = round(1.0 - sum(v for k, v in plan["shares"]["gates"].items() if k != gated[-1]), 6)
         if mode == "bad_artifact":

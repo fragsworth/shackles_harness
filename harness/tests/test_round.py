@@ -237,6 +237,10 @@ def test_full_round_every_gate_enabled(tmp_path):
     assert r.dirty() == ""
     h = r.read("harness/archives/rounds/0001/HISTORY.md")
     assert h.index("PLAN-TO-SPEC-GATE attempt 1: PASS") < h.index("CHECKPOINT review at PLAN-TO-SPEC-GATE") < h.index("RESUME approve"), "R3-n5"
+    plan = r.json("harness/archives/rounds/0001/AGENTS-PLAN.json")  # the clean seed of PLAN-AGENTS-GATE: rungs by kind, weighted shares (R4-m6)
+    assert plan["agents"]["PLAN-TO-SPEC"] == "max" and plan["agents"]["SPEC-TO-IMPLEMENTATION"] == "low" and "CHAT-TO-PLAN" not in plan["agents"]
+    work = plan["shares"]["work"]
+    assert work["CHAT-TO-PLAN"] == 0.05 and work["SPEC-TO-IMPLEMENTATION"] > work["PLAN-TO-SPEC"] > work["PLAN-AGENTS"] and abs(sum(work.values()) - 1) < 1e-6
 
 
 def test_gate_prompt_retry_cost_uses_the_producers_rung(tmp_path):
