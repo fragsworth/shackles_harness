@@ -209,10 +209,6 @@ class Round:
             return "disabled"
         return "no-prose"
 
-    def delegated(self):
-        a = self.state.get("approval") or {}
-        return a.get("mode") == "delegated"
-
     def delegated_through(self, name):
         """Delegation skips the review checkpoint after `name`: every one when `through` is absent, null or empty, else those at or
         before it, anchored on the producer so that `through` may name the producer or its gate."""
@@ -339,7 +335,7 @@ class Round:
         return prompts.step_context(
             self.cfg, name, attempt, self.paths, self.root, self.harness, spec=spec, budget=budget,
             budget_cap=ledger.budget_cap(self.cfg, budget), retry_cost=ledger.retry_cost(self.cfg, producer_budget, self.rung_for(producer)[1]),
-            rung=rung, gate_runs=bool(gate) and self.gate_runs(gate), overrides=st["overrides"], delegated=self.delegated(),
+            rung=rung, gate_runs=bool(gate) and self.gate_runs(gate), overrides=st["overrides"], delegated=self.delegated_through(name),
             findings=findings, carried=st["carried"], previous=previous, question=question, conflicts=conflicts,
             next_finding_id=self.next_finding_id(), frozen=bool(st.get("tests_frozen_at")), sibling_paths=st.get("sibling_paths") or [],
             changed_tests=[self.cfg.harness_rel(p) for p in checks.changed_tests(self.cfg, self.root, st["base_commit"], spec.get("testPaths") or [])]
@@ -1348,7 +1344,8 @@ class Round:
             except RunnerError:
                 living = None
         return {"round": self.id, "status": st["status"], "step": st["step"], "attempt_pending": st.get("attempt_pending"),
-                "checkpoint": st.get("checkpoint"), "attempts": st["attempts"], "failures": st["failures"], "round_retries": st["round_retries"],
+                "checkpoint": st.get("checkpoint"), "overrides": st["overrides"], "approval": st.get("approval"),
+                "attempts": st["attempts"], "failures": st["failures"], "round_retries": st["round_retries"],
                 "spend": self.spend(), "living_preview_usd": living, "judgment_calls": self.judgment_counts(),
                 "undefined_tail": self.undefined_tail(), "undefined_file": self.abs(self.paths["undefined"]),
                 "hard_stop": ledger.hard_stop(self.cfg, st), "round_branch": st["branch"], "root": self.root, "spec_edits": st["spec_edits"]}
@@ -1428,8 +1425,8 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
             raise RunnerError(f"approval words not found in the owner log after {plan.get('presented_at')}: {words!r} (pass --unverified to record them anyway)", 2)
     if not approval:
         approval = {"mode": "approved", "source": "gate-disabled"}
-    if delegate or through:
-        approval.update({"mode": "delegated", "through": through or approval.get("through")})
+    if delegate or through:  # the command line's decision, stamped as such
+        approval.update({"mode": "delegated", "through": through or approval.get("through"), "source": "cli"})
     approval.setdefault("source", "plan")
     if no_branch:
         if not procs.same_path(main_root, root):

@@ -267,10 +267,16 @@ def test_full_round_every_gate_disabled_and_delegation(tmp_path):
     seen, res = drive(d, env={"STUB_ARCHIVE": "1"})
     assert seen == [] and res.json["kind"] == "done"
     assert "review checkpoint after PLAN-TO-SPEC-GATE skipped (delegated)" in d.read("harness/archives/rounds/0001/HISTORY.md")
+    assert d.state()["approval"]["source"] == "cli" and "approval: delegated None from cli)" in d.read("harness/archives/rounds/0001/HISTORY.md"), \
+        "the command line's decision is stamped cli, not plan (R5-m6)"
     t = repo(tmp_path / "through")
     t.start(extra=["--delegate", "--through", "PLAN-TO-SPEC-GATE"])
     seen, res = drive(t, env={"STUB_ARCHIVE": "1"})
-    assert seen == [("review", "CLEANUP")]
+    assert seen == [("review", "CLEANUP")] and t.state()["approval"] == {"mode": "delegated", "through": "PLAN-TO-SPEC-GATE", "source": "cli"}
+    prompts_dir = "harness/archives/rounds/0001/PROMPTS"
+    assert "the round advances to LANDING after a review checkpoint with the owner" in t.read(f"{prompts_dir}/CLEANUP-1.txt"), \
+        "the review sentence follows `through`, not the flat delegation flag (R5-m3)"
+    assert "after a review checkpoint" not in t.read(f"{prompts_dir}/PLAN-TO-SPEC-1.txt")
 
 
 def test_delegation_from_the_plan(tmp_path):
@@ -278,7 +284,7 @@ def test_delegation_from_the_plan(tmp_path):
     for name, through in (("empty", ""), ("null", None)):
         p = repo(tmp_path / name)
         assert p.start(plan=dict(PLAN, approval={"mode": "delegated", "through": through, "overrides": [], "words": "delegate"})).code == 0
-        assert p.state()["approval"]["mode"] == "delegated"
+        assert p.state()["approval"]["mode"] == "delegated" and p.state()["approval"]["source"] == "plan"
         seen, res = drive(p, env={"STUB_ARCHIVE": "1"})
         assert seen == [] and res.json["kind"] == "done", name
         assert "review checkpoint after CLEANUP skipped (delegated)" in p.read("harness/archives/rounds/0001/HISTORY.md")
@@ -332,6 +338,8 @@ def test_overrides(tmp_path):
     assert res.code == 2 and "cannot be overridden" in res.json["error"]
     res = r2.run("override", "--steps", "POSTMORTEM", "--quote", "skip the postmortem")
     assert res.code == 0 and r2.state()["overrides"] == ["POSTMORTEM"]
+    status = r2.run("status").json
+    assert status["overrides"] == ["POSTMORTEM"] and status["approval"] == {"mode": "approved", "source": "gate-disabled"}, "status shows both (R5-m5)"
     seen, res = drive(r2)
     assert r2.state()["status"] == "finished" and "POSTMORTEM" not in r2.state()["attempts"]
     assert res.json["landed_at"]
