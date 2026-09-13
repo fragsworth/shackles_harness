@@ -1092,8 +1092,10 @@ class Round:
     def upstream(self, step, attempt, obj):
         st = self.state
         target = obj.get("target")
-        if target not in pipeline.earlier_producers(step):
-            f = checks.finding("S1", str(target), "UPSTREAM must name an earlier producer step", "name one of " + ", ".join(pipeline.earlier_producers(step)))
+        overridden = target in st["overrides"]  # an overridden target never runs again: re-entering it would only skip it and burn a round retry
+        if overridden or target not in pipeline.earlier_producers(step):
+            f = checks.finding("S1", str(target), f"UPSTREAM names {target}, which is overridden this round" if overridden else "UPSTREAM must name an earlier producer step",
+                               "fix it under your own WRITE_PATHS, or return BLOCKED" if overridden else "name one of " + ", ".join(pipeline.earlier_producers(step)))
             rel = f"{self.paths['findings']}/{step}-{attempt}.mechanical.json"
             self.write_findings(rel, {"verdict": "FAIL", "findings": [f], "source": "mechanical", "step": step, "attempt": attempt})
             self.add_finding(step, f, "mechanical", attempt)

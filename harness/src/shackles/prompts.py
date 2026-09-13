@@ -141,7 +141,8 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
     folder = paths["folder"]
     impl, tests = list(spec.get("implPaths") or []), list(spec.get("testPaths") or [])
     living = cfg.living_paths()
-    write = {"round": [folder], "testPaths": tests + [folder], "implPaths": impl + list(conflicts) + [folder],
+    write = {"round": [folder], "testPaths": tests + [folder],
+             "implPaths": impl + (tests if "SPEC-TO-TESTS" in overrides else []) + list(conflicts) + [folder],  # an overridden SPEC-TO-TESTS leaves the tests to the implementation
              "cleanup": impl + [p for p in living if not any(procs.under(p, t) for t in tests)] + ["INDEX.md", folder],
              "postmortem": [folder] + list(cfg["carryForwardFiles"])}.get(s.writes, [folder])
     write = list(dict.fromkeys(write))

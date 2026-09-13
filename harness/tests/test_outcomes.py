@@ -7,7 +7,7 @@ import pytest
 
 import stub_agent
 from fixtures import PLAN, Repo
-from shackles import pipeline
+from shackles import contract, pipeline
 
 ALL_GATES = {g: 1 for g in pipeline.llm_gates()}
 FOLDER = "harness/archives/rounds/0001"
@@ -180,6 +180,37 @@ def test_upstream_to_each_earlier_producer_and_to_the_plan(tmp_path):
     res = r.act(res.json, "upstream", env={"STUB_TARGET": "POSTMORTEM"})
     assert res.code == 0 and r.state()["step"] == "PLAN-AGENTS" and r.state()["failures"]["PLAN-AGENTS"] == 1
     assert "S1" in json.dumps(r.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-3.mechanical.json"))
+
+
+def test_overridden_spec_to_tests_hands_the_tests_to_the_implementation(tmp_path):
+    """With SPEC-TO-TESTS overridden nothing is frozen and SPEC-TO-IMPLEMENTATION writes under testPaths too; its gate sees the tests in its
+    diff and TESTS-TO-SUITE sorts them (R5-m2). An UPSTREAM to the overridden step is an S1 finding on the source, not a re-entry (R5-m1)."""
+    r = Repo(tmp_path, gates={"SPEC-TO-IMPLEMENTATION-GATE": 1})
+    r.start(plan=dict(PLAN, approval={"mode": "approved", "overrides": ["SPEC-TO-TESTS"]}))
+    res = r.play(until="SPEC-TO-IMPLEMENTATION", auto_review=True)
+    assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and r.state()["tests_frozen_at"] is None
+    prompt = open(res.json["prompt_file"], encoding="utf-8").read()
+    keys = contract.parse(prompt)
+    assert json.loads(keys["WRITE_PATHS"]) == ["../src/", "../tests/", "archives/rounds/0001"] and json.loads(keys["FROZEN_PATHS"]) == []
+    assert "When SPEC-TO-TESTS was overridden, FROZEN_PATHS is empty and testPaths are in WRITE_PATHS" in prompt
+    rec = r.act(res.json, "upstream", env={"STUB_TARGET": "SPEC-TO-TESTS"})
+    st = r.state()
+    assert rec.code == 0 and st["step"] == "SPEC-TO-IMPLEMENTATION" and st["round_retries"] == 0 and st["failures"]["SPEC-TO-IMPLEMENTATION"] == 1
+    assert not [k for k in st["findings_ledger"] if k.startswith("U1")] and st["findings_ledger"]["S1"]["step"] == "SPEC-TO-IMPLEMENTATION"
+    f = r.json(f"{FOLDER}/FINDINGS/SPEC-TO-IMPLEMENTATION-1.mechanical.json")
+    assert [x["id"] for x in f["findings"]] == ["S1"] and f["findings"][0]["reason"] == "UPSTREAM names SPEC-TO-TESTS, which is overridden this round"
+    res = r.next()
+    assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and res.json["attempt"] == 2 and "overridden this round" in open(res.json["prompt_file"], encoding="utf-8").read()
+    message = stub_agent.perform(res.json["prompt_file"], "pass", {})
+    r.write("tests/toy/test_text.py", stub_agent.canned("test_text.py"))
+    rec = r.record("SPEC-TO-IMPLEMENTATION", 2, message)
+    assert rec.code == 0 and rec.json["next_step"] == "SPEC-TO-IMPLEMENTATION-GATE" and "M1" not in history(r) and "test_whisper" in r.read("tests/toy/test_text.py")
+    res = r.next()
+    assert res.json["step"] == "SPEC-TO-IMPLEMENTATION-GATE"
+    diff = r.read(f"{FOLDER}/PROMPTS/SPEC-TO-IMPLEMENTATION-GATE-1.diff")
+    assert "test_whisper" in diff and "def whisper" in diff, "the gate judges the tests with the code"
+    res = r.play(until="TESTS-TO-SUITE")
+    assert res.json["step"] == "TESTS-TO-SUITE" and "../tests/toy/test_text.py" in open(res.json["prompt_file"], encoding="utf-8").read()
 
 
 def test_blocked_checkpoint_and_answer(tmp_path):

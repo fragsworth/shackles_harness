@@ -153,6 +153,8 @@ def test_step_context_write_paths_and_inputs():
     impl = prompts.step_context(cfg, "SPEC-TO-IMPLEMENTATION", 3, paths, "wt", "h", spec=spec, frozen=True, conflicts=["../src/a.py"], merge=True)
     assert impl["write_paths"] == ["../src/", "../src/a.py", paths["folder"]] and impl["frozen_paths"] == ["../tests/"]
     assert impl["conflicts"] == ["../src/a.py"] and "L3" in impl["checks"] and impl["artifact"] == "a diff under WRITE_PATHS"
+    freed = prompts.step_context(cfg, "SPEC-TO-IMPLEMENTATION", 1, paths, "wt", "h", spec=spec, overrides=["SPEC-TO-TESTS"])
+    assert freed["write_paths"] == ["../src/", "../tests/", paths["folder"]] and freed["frozen_paths"] == [], "an overridden SPEC-TO-TESTS leaves the tests to the implementation (R5-m2)"
     cleanup = prompts.step_context(cfg, "CLEANUP", 1, paths, "wt", "h", spec=spec)
     assert cleanup["write_paths"] == ["../src/", "src/", "docs/", "tests/", "INDEX.md", paths["folder"]]
     gate = prompts.step_context(cfg, "SPEC-TO-TESTS-GATE", 2, paths, "wt", "h", spec=spec)

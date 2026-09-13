@@ -35,7 +35,7 @@ CHAT-TO-PLAN is done by the driver in chat before `start`; CHAT-TO-PLAN-GATE is 
 An LLM gate runs iff its `gates` flag is 1, its prose file exists at `prose_commit`, and neither it nor its producer is overridden; otherwise it is skipped with `FINDINGS/<GATE>-<n>.json` of source `disabled`, `override` or `no-prose`.
 A producer with no `<STEP>-OVERVIEW.txt` at `prose_commit` is a `start` error; an enabled gate without prose is disabled with a warning.
 Acceptance of a producer is its gate's PASS, or its clean DONE when the gate does not run; acceptance effects: PLAN-TO-SPEC charges the spec words, SPEC-TO-TESTS freezes the tests at HEAD, TESTS-TO-SUITE moves `archive` files into `tests-archive/` (collisions get a numeric suffix).
-Overridable: every gate, PLAN-AGENTS (default shares and rungs), SPEC-TO-TESTS (nothing frozen), TESTS-TO-SUITE (every test kept), CLEANUP (skipped, the pre-landing review still happens), POSTMORTEM (the round finishes after LANDING).
+Overridable: every gate, PLAN-AGENTS (default shares and rungs), SPEC-TO-TESTS (nothing frozen; SPEC-TO-IMPLEMENTATION writes under `testPaths` too), TESTS-TO-SUITE (every test kept), CLEANUP (skipped, the pre-landing review still happens), POSTMORTEM (the round finishes after LANDING).
 Not overridable: CHAT-TO-PLAN, CHAT-TO-PLAN-GATE, PLAN-TO-SPEC, SPEC-TO-IMPLEMENTATION, LANDING.
 `checkpointsAfter` names the steps whose completion raises a `review` checkpoint unless the round is delegated through them.
 Attempt numbers of a step never restart, so `PROMPTS/`, `RESULTS/` and `FINDINGS/` names stay unique even after UPSTREAM or an out-of-band edit.
@@ -76,7 +76,7 @@ Gate findings enter the ledger as `open`; a producer resolves each as `fixed`, `
 A disputed finding is ruled `upheld` or `withdrawn` by the next gate; upheld twice is `settled` and a further dispute is ignored with a note; withdrawn is closed and a re-raised copy (same quote) is dropped.
 `deferred` findings are carried to every later producer and to POSTMORTEM; non-blocking findings of a PASS are carried the same way, and so is each `raise_with_owner` item of an accepted SUITE.json (source `flag`), which HISTORY records as `flagged for the owner: ...`.
 Mechanical findings (M*, S*, L*) are not disputable; they close when the producer's next attempt passes its checks.
-Routing findings: `U1` (UPSTREAM, attached to the target), `B1` (BLOCKED), `O1` (the owner's answer, blocking), `Q1` (a withdrawn question, the answer to assume), `W1` (a live sibling declares an overlapping path).
+Routing findings: `U1` (UPSTREAM, attached to the target; an overridden target is refused as `S1` on the source, which never re-enters), `B1` (BLOCKED), `O1` (the owner's answer, blocking), `Q1` (a withdrawn question, the answer to assume), `W1` (a live sibling declares an overlapping path).
 
 ## Checkpoints and owner commands
 
