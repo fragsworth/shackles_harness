@@ -1340,10 +1340,10 @@ def st_base(r):
 
 
 # ---- start and lookup ----------------------------------------------------------
-def validate_plan(cfg, plan, delegate, through, overrides):
+def validate_plan(cfg, plan, through, overrides):
     errors = schemas.validate(plan, schemas.SCHEMAS["PLAN"], "PLAN")
     approval = plan.get("approval")
-    if cfg.gate_enabled("CHAT-TO-PLAN-GATE") and not approval and not delegate:
+    if cfg.gate_enabled("CHAT-TO-PLAN-GATE") and not approval:  # --delegate overrides the mode, never the owner's word
         errors.append("PLAN: approval is required while CHAT-TO-PLAN-GATE is enabled (mode, words)")
     for name in overrides:
         if not pipeline.is_overridable(name):
@@ -1375,7 +1375,7 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
         raise RunnerError(f"plan unreadable: {exc}", 2)
     approval = dict(plan.get("approval") or {})
     overrides = list(approval.get("overrides") or [])
-    errors = validate_plan(cfg, plan, delegate, through or approval.get("through"), overrides)
+    errors = validate_plan(cfg, plan, through or approval.get("through"), overrides)
     if errors:
         raise RunnerError("; ".join(errors), 2)
     if agent and agent not in cfg.agents:

@@ -41,6 +41,7 @@ def test_start_requires_approval_words_when_the_gate_is_enabled(tmp_path):
     r = repo(tmp_path, gates={"CHAT-TO-PLAN-GATE": 1})
     res = r.start()
     assert res.code == 2 and "approval is required" in res.json["error"]
+    assert r.start(extra=["--delegate"]).code == 2, "--delegate overrides the mode, not the owner's word (R3-m9)"
     r.owner("hello, thinking", at="2025-12-31T23:00:00Z")
     r.owner("please do it: approve the plan", at="2026-01-01T01:00:00Z")
     plan = dict(PLAN, approval={"mode": "approved", "words": "something else"})
