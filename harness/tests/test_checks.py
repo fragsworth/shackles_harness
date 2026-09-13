@@ -206,6 +206,19 @@ def test_record_reports_the_undefined_lines_the_attempt_added(tmp_path):
     assert rec.json["undefined_new"] == [] and rec.json["judgment_calls"]["undefined"] == 3
 
 
+def test_claimed_judgment_calls_are_compared_with_the_files(tmp_path):
+    """A message that claims calls the files do not show (or the reverse) is one FLAG; matching counts are silent (R3-m8)."""
+    r = Repo(tmp_path)
+    r.start()
+    a = r.next().json
+    stub_agent.perform(a["prompt_file"], "pass", {})
+    res = r.record("PLAN-AGENTS", 1, {"status": "DONE", "notes": "claims calls the files do not show", "judgment_calls": {"defined": 2, "undefined": 3}})
+    flag = "PLAN-AGENTS attempt 1: message claims 2/3 judgment calls, the files gained 0/0"
+    assert res.code == 0 and flag in res.json["warnings"] and f"FLAG (runner): {flag}" in r.read(f"{FOLDER}/HISTORY.md")
+    res = r.act(r.next().json, "pass", env={"STUB_JUDGMENT": "1,1"})
+    assert res.code == 0 and not any("message claims" in w for w in res.json["warnings"])
+
+
 def test_gate_verdict_is_authoritative(tmp_path):
     r = Repo(tmp_path, gates=ALL_GATES)
     r.start()

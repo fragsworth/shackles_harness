@@ -827,7 +827,7 @@ class Round:
             self.record_gate(step, attempt, obj)
         else:
             procs.write_json(self.abs(result_rel + ".json"), obj)
-            self.record_producer(step, attempt, obj, pc, merge, snapshot)
+            self.record_producer(step, attempt, obj, pc, merge, snapshot, before)
         after = self.judgment_counts()
         st["judgment_calls"] = after
         delta = f"judgment calls +{after['defined'] - before['defined']} defined, +{after['undefined'] - before['undefined']} undefined"
@@ -914,13 +914,26 @@ class Round:
             else:
                 e["status"] = "fixed"
 
-    def record_producer(self, step, attempt, obj, prompt_commit, merge, snapshot):
+    def claimed_calls(self, step, attempt, obj, before):
+        """The message's judgment-call counts (ints, or list lengths) against what the files gained since the prompt; a mismatch is one FLAG."""
+        jc = obj.get("judgment_calls")
+        if not isinstance(jc, dict):
+            return
+        after = self.judgment_counts()
+        claimed = {k: len(v) if isinstance(v, list) else int(v or 0) for k, v in ((k, jc.get(k, 0)) for k in ("defined", "undefined"))}
+        gained = {k: after[k] - before[k] for k in ("defined", "undefined")}
+        if claimed != gained:
+            self.flag(f"{step} attempt {attempt}: message claims {claimed['defined']}/{claimed['undefined']} judgment calls, "
+                      f"the files gained {gained['defined']}/{gained['undefined']}")
+
+    def record_producer(self, step, attempt, obj, prompt_commit, merge, snapshot, before):
         st = self.state
         status = obj["status"]
         self.apply_resolutions(step, attempt, obj)
         findings, reverted = [], []
         f4, r4 = checks.m4_judgment(self.root, prompt_commit or st["base_commit"], [self.repo_rel(self.paths["defined"]), self.repo_rel(self.paths["undefined"])])
         findings += f4
+        self.claimed_calls(step, attempt, obj, before)
         self.e1(checks.e1_spec_edits(self.root, st["base_commit"], specguard.spec_files(self.root)))
         merge_tree = (st.get("merge_pending") or {}).get("automerge_tree") if merge else None
         conflicted = [self.repo_rel(p) for p in (st.get("merge_pending") or {}).get("conflicted") or []] if merge else []
