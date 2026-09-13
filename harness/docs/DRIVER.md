@@ -1,7 +1,7 @@
 # DRIVER
 
 How a chat session drives one round on this machine; every command is `py -3.13 harness/src/run.py ...` from the repository root unless a worktree is named, and carries `--root <repo>` whenever the shell's cwd may be another repository (a sandbox): without it the runner acts on the nearest ancestor of the cwd that holds `spec.yaml`.
-`status`, `spend`, `rounds`, `config`, `render` and `check` are read-only and may be run at any time; every other command writes round state.
+`doctor`, `config`, `render`, `status`, `spend` and `rounds` are read-only and may be run at any time; `check` writes nothing shared (at LANDING it merges the target into the worktree); every other command writes round state.
 
 ## What your session has
 
