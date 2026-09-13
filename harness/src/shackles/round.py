@@ -603,6 +603,9 @@ class Round:
                 if st.get("approval") is None:
                     self.raise_checkpoint("approval", name, question="the plan changed; approve it again with the owner's words", artifact=self.paths["plan"])
                     return name
+                a = st["approval"]
+                st["attempts"][name] = st["attempts"].get(name, 0) + 1
+                self.history(f"{name} passed mechanically (PLAN.json valid; approval: {a.get('mode')} {a.get('words')!r} from {a.get('source')})")
                 self.complete(name)
             elif s.kind == "plan":
                 self.raise_checkpoint("upstream-plan", name, question="the plan must change: edit PLAN.json, then approve", artifact=self.paths["plan"])

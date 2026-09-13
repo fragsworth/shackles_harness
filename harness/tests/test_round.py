@@ -100,6 +100,8 @@ def test_action_shape_prompt_commit_and_record_command(tmp_path):
     assert os.path.exists(a["prompt_file"]) and r.log()[0] == "round 0001: PLAN-AGENTS attempt 1 prompt" and r.dirty() == ""
     st = r.state()
     assert st["attempt_pending"]["step"] == "PLAN-AGENTS" and st["step_starts"]["PLAN-AGENTS"] == r.head().replace(r.head(), st["step_starts"]["PLAN-AGENTS"])
+    assert st["attempts"]["CHAT-TO-PLAN-GATE"] == 1, "the mechanical gate counts an attempt (R3-m3)"
+    assert "CHAT-TO-PLAN-GATE passed mechanically (PLAN.json valid; approval: approved None from gate-disabled)" in r.read("harness/archives/rounds/0001/HISTORY.md")
     again = r.next()
     assert again.json["prompt_file"] == a["prompt_file"] and r.log()[0] == "round 0001: PLAN-AGENTS attempt 1 prompt"
     s = repo(tmp_path / "with space")
@@ -135,7 +137,7 @@ def test_record_guards_refuse_and_change_nothing(tmp_path):
     r.git("clean", "-fdq", "--", "harness")
     assert r.record("PLAN-TO-SPEC", 1, msg).code == 2
     assert r.record("PLAN-AGENTS", 2, msg).code == 2
-    assert r.head() == head and r.state()["attempts"] == {"CHAT-TO-PLAN": 1}
+    assert r.head() == head and r.state()["attempts"] == {"CHAT-TO-PLAN": 1, "CHAT-TO-PLAN-GATE": 1}
     rec = r.act(a)
     assert rec.code == 0
     replay = r.record("PLAN-AGENTS", 1, msg)
@@ -150,7 +152,7 @@ def test_record_agent_names_the_rung_that_ran(tmp_path):
     stub_agent.perform(a["prompt_file"], "pass", {})
     msg = {"status": "DONE", "notes": "ran on the low rung's model"}
     res = r.record("PLAN-AGENTS", 1, msg, cost=None, extra=["--tokens", "1000000", "--agent", "nope"])
-    assert res.code == 2 and "not a roster key" in res.json["error"] and r.state()["attempts"] == {"CHAT-TO-PLAN": 1}
+    assert res.code == 2 and "not a roster key" in res.json["error"] and r.state()["attempts"] == {"CHAT-TO-PLAN": 1, "CHAT-TO-PLAN-GATE": 1}
     res = r.record("PLAN-AGENTS", 1, msg, cost=None, extra=["--tokens", "1000000", "--agent", "low"])
     assert res.code == 0
     e = [e for e in r.state()["spend"]["entries"] if e["source"] == "agent-tokens"][-1]
