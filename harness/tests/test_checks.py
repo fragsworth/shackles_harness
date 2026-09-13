@@ -173,6 +173,20 @@ def test_judgment_counts_per_attempt_and_gate_lines_via_runner(tmp_path):
     assert res.json["undefined_file"].endswith("UNDEFINED_JUDGMENT_CALLS.md")
 
 
+def test_record_reports_the_undefined_lines_the_attempt_added(tmp_path):
+    """The recorded payload carries the undefined judgment calls the attempt appended, so a delegated round's driver can relay them (R3-M3)."""
+    r = Repo(tmp_path, gates={"PLAN-AGENTS-GATE": 1})
+    r.start(extra=["--delegate"])
+    rec = r.act(r.next().json, "pass", env={"STUB_JUDGMENT": "1,2"})
+    assert rec.code == 0 and rec.json["undefined_new"] == ["- PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 1", "- PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 2"]
+    assert rec.json["undefined_file"].endswith("UNDEFINED_JUDGMENT_CALLS.md")
+    assert "undefined judgment call: - PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 2" in rec.stderr, "the same lines reach a driver reading the terminal"
+    rec = r.act(r.next().json, "judgment")
+    assert rec.json["undefined_new"] == ["- STUB-GATE-UNDEFINED (via runner, PLAN-AGENTS-GATE-1)"]
+    rec = r.act(r.next().json, "pass")
+    assert rec.json["undefined_new"] == [] and rec.json["judgment_calls"]["undefined"] == 3
+
+
 def test_gate_verdict_is_authoritative(tmp_path):
     r = Repo(tmp_path, gates=ALL_GATES)
     r.start()

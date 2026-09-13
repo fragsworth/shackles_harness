@@ -118,6 +118,8 @@ def cmd_start(args, root):
 def finish(rnd, payload, code):
     for note in rnd.notes:
         say("note: " + note)
+    for line in payload.get("undefined_new") or []:
+        say("undefined judgment call: " + line)
     if payload.get("kind") == "checkpoint":
         say(payload["message"])
     emit(payload)

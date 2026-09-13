@@ -833,8 +833,10 @@ class Round:
             return self.checkpoint_payload(), 10
         if st["status"] == "finished":
             return self.done_payload(landing.sync_main(self, push)), 0
+        new = after["undefined"] - before["undefined"]  # the lines this attempt appended: the driver relays them, delegated or not
         return {"kind": "recorded", "round": self.id, "step": step, "attempt": attempt, "next_step": st["step"],
-                "spend": self.spend(), "judgment_calls": after, "warnings": self.notes}, 0
+                "spend": self.spend(), "judgment_calls": after, "undefined_new": self.undefined_tail(new) if new > 0 else [],
+                "undefined_file": self.abs(self.paths["undefined"]), "warnings": self.notes}, 0
 
     def snapshot(self, exclude, merge):
         """The dirty tree; on a merge attempt only what differs from the automerge tree, so the sibling's changes never count."""

@@ -29,6 +29,7 @@ Save the sub-agent's final message to `result_file` as returned: `record` extrac
 Run the action's `record_command`, adding `--tokens N` when the tool reported a token total (else the step budget is booked as an estimate) and `--agent RUNG` when the sub-agent ran on another rung's model than the action's (`rungs` in the action maps each rung to its model alias; a name outside the roster is refused), so the ledger prices the run at the rung that actually ran.
 Never do a gate's job, never edit an artifact or a result, never commit or push; the runner does.
 `record` exit 0 (kind `recorded`): the attempt is accepted or routed; run `next`.
+Relay `undefined_new` (the undefined judgment calls the attempt appended, also printed on stderr; `undefined_file` is the file) to the owner as it appears, delegated or not: the owner delegated the reviews, not the monitoring.
 `record` exit 10: the attempt was accepted and committed, and a checkpoint follows it (the review after a `checkpointsAfter` step, a question, or blocked); it is not a failure.
 `record` exit 2 with kind `invalid`: the message was not the JSON the prompt asked for; run `next` again, which reprints the same attempt, and spawn again.
 Exit 10 from `next` or `record`: relay `message` to the owner verbatim and stop; when the owner speaks, run the matching command with their exact words in `--quote` (the commands are listed in the message).
@@ -38,7 +39,7 @@ An owner's out-of-band edit of PLAN.json, SPEC.json or SPEC.md counts only once 
 
 ## After
 
-On `done`, run `git pull --ff-only` in the main checkout; `main_synced: false` means the tail commits arrive with the next landing.
+On `done`, relay its `judgment_calls` counts and `undefined_tail` (the last undefined lines, with `undefined_file`) to the owner, then run `git pull --ff-only` in the main checkout; `main_synced: false` means the tail commits arrive with the next landing.
 Before `abandon`, confirm with the owner in chat; quote their words.
 
 ## Headless
