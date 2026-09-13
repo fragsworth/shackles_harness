@@ -779,7 +779,9 @@ class Round:
         obj = schemas.extract_json(text)
         schema = "FINDINGS" if kind == "gate" else "RESULT"
         errors = schemas.validate(obj, schemas.SCHEMAS[schema], schema) if obj is not None else [f"{schema}: no JSON object in the final message"]
-        rung_name, rung = self.cfg.rung(agent) if agent else self.rung_for(step)
+        planned = self.rung_for(step)[0]
+        off_plan = bool(agent) and agent != planned  # priced at the rung that ran; HISTORY flags that the plan's rung was not honoured
+        rung_name, rung = self.cfg.rung(agent) if off_plan else self.rung_for(step)
         usd, source, note_text = ledger.agent_cost(self.cfg, rung, cost, tokens, spawns, self.budgets().get(step, 0.0))
         result_rel = f"{self.paths['results']}/{step}-{attempt}"
         exclude = (self.repo_rel(result_rel + ".json"), self.repo_rel(result_rel + ".meta.json"))
@@ -796,13 +798,15 @@ class Round:
         snapshot = self.snapshot(exclude, merge)  # taken before this record writes anything, so its own HISTORY lines are never strays
         if moved:
             self.flag(f"M0: HEAD moved during {step} attempt {attempt}; the agent's commit was undone (soft reset)")
+        if off_plan:
+            self.flag(f"{step} attempt {attempt}: ran on rung {agent}, the action named {planned}")
         if not errors and kind == "gate" and snapshot:
             errors = ["G1: the gate run changed files; discarded"]
         if errors:
             return self.infra(step, attempt, text, errors + ([note] if note else []), usd, source, note_text, push, snapshot)
         if note:
             self.flag(f"headless agent note at {step} attempt {attempt}: {note}")
-        ledger.append(st, step, attempt, usd, source, note_text + (f" (rung {rung_name})" if agent else ""))
+        ledger.append(st, step, attempt, usd, source, note_text + (f" (rung {rung_name})" if off_plan else ""))
         ledger.append(st, step, attempt, self.cfg["driverUsdPerStep"], "driver")
         st["attempts"][step] = attempt
         before = pending.get("judgment") or st["judgment_calls"]

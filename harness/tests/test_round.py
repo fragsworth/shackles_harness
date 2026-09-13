@@ -155,6 +155,13 @@ def test_record_agent_names_the_rung_that_ran(tmp_path):
     assert res.code == 0
     e = [e for e in r.state()["spend"]["entries"] if e["source"] == "agent-tokens"][-1]
     assert e["usd"] == 0.2 * 10 + 0.8 * 2 and "(rung low)" in e["note"], "priced at the rung that ran, not the action's max"
+    flag = "PLAN-AGENTS attempt 1: ran on rung low, the action named max"
+    assert flag in res.json["warnings"] and f"FLAG (runner): {flag}" in r.read("harness/archives/rounds/0001/HISTORY.md"), "the plan's rung was not honoured (R3-m1)"
+    a = r.next().json
+    stub_agent.perform(a["prompt_file"], "pass", {})
+    res = r.record("PLAN-TO-SPEC", 1, {"status": "DONE", "notes": "ran on the action's own rung"}, cost=None, extra=["--tokens", "1000", "--agent", "max"])
+    e = [e for e in r.state()["spend"]["entries"] if e["source"] == "agent-tokens"][-1]
+    assert res.code == 0 and "(rung" not in e["note"] and not any("ran on rung" in w for w in res.json["warnings"]), "no note when the rungs agree"
 
 
 def assert_round_files(r, gates_on):
