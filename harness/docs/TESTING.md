@@ -15,7 +15,7 @@ Run the suite from the repository root with `py -3.13 -m pytest`; `-m "not slow"
 
 `fixtures.write_spec` generates the minimal fixture spec: a `project.yaml` from `DEFAULTS` with living paths at the toy project, a four-rung roster, and one prose file per step holding only the includes and tokens the real files use.
 `fixtures.Repo` builds a throwaway repository with that spec, the toy project (`src/toy/text.py` already holds `shout(text)`, which upper-cases, and `tests/toy/test_text.py` asserts `shout('hi') == 'HI'`; a plan that "adds" `shout` changes it), a copy of the runner and an accepted baseline; `add_origin`, `clone` and `view` add a bare origin, another machine and a worktree view.
-`stub_agent.py` is the fake agent: it parses the contract lines, writes canned artifacts from `fixtures/canned/`, and answers per `STUB_MODE` or `STUB_SCRIPT`.
+`stub_agent.py` is the fake agent: it parses the contract lines, writes canned artifacts from `fixtures/canned/`, and answers per `STUB_MODE` or `STUB_SCRIPT`; its agents plan chooses rungs by kind and weights the work shares (the clean seed of PLAN-AGENTS-GATE) unless `STUB_RUNG` forces one rung.
 Stub modes: producers `pass noop dispute deferred needs_owner upstream blocked garbage fence prose_wrapped commit stray touch_tests break rewrite_judgment edit_spec big slow resolve bad_artifact replay`; gates `pass pass_nb fail uphold withdraw q_uphold q_withdraw judgment inconsistent dirty garbage fence`.
 `Repo.play(until, modes, env, auto_review)` drives next, stub and record in-process to a step; a full stub round takes about ten seconds and the whole suite about six and a half minutes on this machine, most of it git subprocesses.
 
