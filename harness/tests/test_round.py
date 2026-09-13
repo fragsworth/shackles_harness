@@ -90,6 +90,10 @@ def test_action_shape_prompt_commit_and_record_command(tmp_path):
     for key in ("prompt_file", "result_file", "artifact", "worktree", "runner"):
         assert os.path.isabs(a[key]), key
     assert a["agent"] == "max" and a["agent_type"] == "shackles-producer-max" and a["model_alias"] == "fable" and a["effort"] == "max"
+    assert a["fallback_agent_type"] == "general-purpose" and a["rungs"] == {"max": "fable", "high": "fable", "medium": "opus", "low": "sonnet"}
+    assert a["task"] == f"Your instructions are the entire content of {a['prompt_file']}. Read it now and follow it exactly; " \
+                        "your final message must be exactly the JSON object it specifies and nothing else."
+    assert not any(w.startswith("agent_type") for w in a["warnings"]), "the runner cannot see the session's agent list, so it never guesses"
     assert a["record_command"].endswith(f"record --step PLAN-AGENTS --attempt 1 --result {a['result_file']}")
     assert a["budget_usd"] > 0 and a["budget_cap_usd"] >= a["budget_usd"] and a["tools"] == "all"
     assert os.path.exists(a["prompt_file"]) and r.log()[0] == "round 0001: PLAN-AGENTS attempt 1 prompt" and r.dirty() == ""
@@ -136,6 +140,20 @@ def test_record_guards_refuse_and_change_nothing(tmp_path):
     replay = r.record("PLAN-AGENTS", 1, msg)
     assert replay.code == 2 and "error" in replay.json
     assert r.state()["attempts"]["PLAN-AGENTS"] == 1
+
+
+def test_record_agent_names_the_rung_that_ran(tmp_path):
+    r = repo(tmp_path)
+    r.start()
+    a = r.next().json
+    stub_agent.perform(a["prompt_file"], "pass", {})
+    msg = {"status": "DONE", "notes": "ran on the low rung's model"}
+    res = r.record("PLAN-AGENTS", 1, msg, cost=None, extra=["--tokens", "1000000", "--agent", "nope"])
+    assert res.code == 2 and "not a roster key" in res.json["error"] and r.state()["attempts"] == {"CHAT-TO-PLAN": 1}
+    res = r.record("PLAN-AGENTS", 1, msg, cost=None, extra=["--tokens", "1000000", "--agent", "low"])
+    assert res.code == 0
+    e = [e for e in r.state()["spend"]["entries"] if e["source"] == "agent-tokens"][-1]
+    assert e["usd"] == 0.2 * 10 + 0.8 * 2 and "(rung low)" in e["note"], "priced at the rung that ran, not the action's max"
 
 
 def assert_round_files(r, gates_on):

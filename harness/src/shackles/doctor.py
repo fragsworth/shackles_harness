@@ -5,7 +5,7 @@ import platform
 import re
 import sys
 
-from . import agents, config as configmod, contract, gitops, pipeline, prompts, procs, specguard
+from . import agentdefs, agents, config as configmod, contract, gitops, pipeline, prompts, procs, specguard
 from .gitops import RunnerError
 
 HOOK_SCRIPT = "harness/src/owner_log_hook.py"
@@ -153,10 +153,9 @@ def run(root, probe_cli=False):
             (warnings if token in waived else errors).append(f"render {step}: unresolved token {token}" + (f" (waived: {waived[token]})" if token in waived else ""))
         for w in r.get("warnings", []):
             warnings.append(f"render {step}: {w}")
-    try:
-        from . import agentdefs
-        info["agent_definitions"] = agentdefs.drift(cfg, root)
-        warnings += [f"agents: {d}" for d in info["agent_definitions"]]
-    except ImportError:
-        pass
+    drift = agentdefs.drift(cfg, root)
+    info["agent_definitions"] = {"folder": os.path.join(root, agentdefs.DIR), "drift": drift,
+                                 "note": "a session registers these only when started in this repository; any other session spawns "
+                                         f"{agentdefs.FALLBACK} with the action's model_alias"}
+    warnings += [f"agents: {d}" for d in drift]
     return {"errors": errors, "warnings": warnings, "info": info}

@@ -44,6 +44,8 @@ def test_doctor_config_and_render_on_the_fixture(tmp_path):
     report = json.loads(proc.stdout.strip())
     assert report["errors"] == [] and report["info"]["prompts"]["PLAN-AGENTS"]["unresolved"] == []
     assert any("hook" in w for w in report["warnings"])
+    defs = report["info"]["agent_definitions"]
+    assert len(defs["drift"]) == 8 and defs["folder"].endswith("agents") and "general-purpose" in defs["note"], "the fixture repo has no definitions: say so"
     proc = run_py(r.root, "config")
     out = json.loads(proc.stdout.strip())
     assert out["sources"]["suiteCommand"] == "project.yaml" and out["sources"]["pushAttempts"] == "default"
@@ -63,13 +65,6 @@ def test_runner_skew_warning(tmp_path):
     proc = run_py(r.root, "next")
     warnings = json.loads(proc.stdout.strip())["warnings"]
     assert not any(w.startswith("runner_skew") for w in warnings)
-    assert any(w.startswith("agent_type: no .claude/agents/shackles-producer-max.md") and "general-purpose" in w for w in warnings), \
-        "run from a folder without the definitions, the action says the type is unavailable there"
-    assert r.run("agents", "--write").code == 0
-    r.git("add", "-A")
-    r.git("commit", "-q", "-m", "agent definitions")
-    proc = run_py(r.root, "next")
-    assert not any(w.startswith("agent_type") for w in json.loads(proc.stdout.strip())["warnings"])
 
 
 def test_checkpoint_exit_code_10_and_message_on_stderr(tmp_path):

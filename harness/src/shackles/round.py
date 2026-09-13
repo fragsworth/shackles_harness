@@ -5,7 +5,7 @@ import os
 import re
 import shutil
 
-from . import agentdefs, checks, config as configmod, gitops, landing, ledger, owner as ownermod, pipeline, procs, prompts, schemas, specguard
+from . import agentdefs, checks, config as configmod, contract, gitops, landing, ledger, owner as ownermod, pipeline, procs, prompts, schemas, specguard
 from .gitops import RunnerError
 
 NOTE_CAP = 2000
@@ -442,14 +442,13 @@ class Round:
         running = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if not procs.same_path(running, os.path.join(self.harness, "src")):
             warnings.append(f"runner_skew: this command runs {running}; drive the round with {runner}")
-        agent_type = f"shackles-{kind}-{rung_name}"
-        if not os.path.exists(os.path.join(os.getcwd(), agentdefs.DIR, agent_type + ".md")):
-            warnings.append(f"agent_type: no {procs.posix(agentdefs.DIR)}/{agent_type}.md under {os.getcwd()}, so a session started here has no such "
-                            f"type (definitions register at session start from the session's project directory); spawn general-purpose with model {alias}")
         return {"kind": kind, "round": self.id, "step": name, "attempt": attempt, "prompt_file": ctx["prompt_file"],
                 "result_file": ctx["result_file"], "artifact": ctx["artifact"], "diff_file": ctx["diff_file"],
-                "agent": rung_name, "agent_type": agent_type, "model": rung.get("model"), "model_alias": alias,
-                "effort": rung.get("effort"), "budget_usd": ctx["budget"], "budget_cap_usd": ctx["budget_cap"],
+                "agent": rung_name, "agent_type": f"shackles-{kind}-{rung_name}", "fallback_agent_type": agentdefs.FALLBACK,
+                "model": rung.get("model"), "model_alias": alias, "effort": rung.get("effort"),
+                "rungs": {r: self.cfg.model_alias(e.get("model", "")) for r, e in self.cfg.agents.items()},
+                "task": contract.WRAPPER.format(prompt_file=ctx["prompt_file"]),
+                "budget_usd": ctx["budget"], "budget_cap_usd": ctx["budget_cap"],
                 "max_turns": ctx["max_turns"], "wall_clock_hours": ctx["wall_clock_hours"], "sub_agents": ctx["sub_agents"],
                 "tools": "read-only" if kind == "gate" else "all", "worktree": self.root, "runner": runner,
                 "record_command": record, "spend": self.spend(), "judgment_calls": self.judgment_counts(), "warnings": warnings}
@@ -760,6 +759,8 @@ class Round:
         pending = st.get("attempt_pending")
         if attempt != st["attempts"].get(step, 0) + 1 or not pending or pending["step"] != step or pending["attempt"] != attempt:
             raise RunnerError(f"no pending attempt {attempt} of {step} (next attempt is {st['attempts'].get(step, 0) + 1}, pending {pending})", 2)
+        if agent and agent not in self.cfg.agents:
+            raise RunnerError(f"--agent {agent} is not a roster key (one of {', '.join(self.cfg.agents)})", 2)
         s = pipeline.step(step)
         kind = "gate" if s.kind == "gate" else "producer"
         try:

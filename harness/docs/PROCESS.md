@@ -47,7 +47,7 @@ Attempt numbers of a step never restart, so `PROMPTS/`, `RESULTS/` and `FINDINGS
 `start --plan F` validates the plan before any git command, refuses on spec drift unless `--accept-spec`, claims an id on origin, adds the worktree and makes the start commit; `--no-branch` runs in the main checkout (refused from a linked worktree).
 A worktree round starts from `origin/<mainBranch>`, so `start` refuses while a spec file, `spec.yaml` or the baseline differs from it: commit and push the change first (`--accept-spec` then covers drift that is already on origin).
 `next` does mechanical work until an agent run is due and prints the action, a checkpoint (exit 10) or `done`; `--discard` resets unrecorded work of the pending attempt, which `next` otherwise refuses to touch while any dirty path lies inside that attempt's write paths.
-`record --step S --attempt N --result F [--cost USD | --tokens N [--agent RUNG]] [--spawns K]` validates the final message, runs the checks, routes the outcome, books the cost, commits and pushes.
+`record --step S --attempt N --result F [--cost USD | --tokens N [--agent RUNG]] [--spawns K]` validates the final message, runs the checks, routes the outcome, books the cost, commits and pushes; `--agent` names the roster rung that actually ran, priced instead of the action's, and is refused unless it is a roster key.
 `approve`, `delegate [--through STEP]`, `answer --text T`, `override --steps A,B` and `abandon --reason R` carry the owner's words in `--quote` and are verified against the owner log when it exists (`--unverified` records them with a FLAG).
 `status`, `spend [--project]` and `rounds` are read-only; `check` writes nothing shared: it runs the current step's checks, or at LANDING merges the target into the worktree and runs verify and the suite, and exits 3 on findings.
 `run --until checkpoint|step|done` is the headless loop (next, agent command, record); `probe` and `sandbox` are the real-agent testing tools of docs/TESTING.md.
@@ -57,7 +57,8 @@ A `record` whose push is rejected stops with `another runner owns this round (pu
 
 The driver runs `next`, spawns one fresh sub-agent per action with the prompt file as its whole instruction, saves the final message to the result file and runs `record`; docs/DRIVER.md has the exact loop.
 The driver never judges, never edits an artifact or result, never commits or pushes, and drives a round with the worktree's own `run.py` (a `runner_skew` warning names the right one).
-The prompt handed to a sub-agent is the file's entire content, unaltered, referenced by path with the fixed one-line wrapper in `contract.WRAPPER`.
+The prompt handed to a sub-agent is the file's entire content, unaltered, referenced by path with the fixed one-line wrapper in `contract.WRAPPER`, which the action prints filled in as `task`.
+The action names the sub-agent as `agent_type` (`shackles-producer-<rung>` or `shackles-gate-<rung>`) and, for a session that registered no such definition, `fallback_agent_type` (`general-purpose`) with `model_alias`; the runner cannot see the session's agent list, so it never guesses which applies.
 
 ## Contracts
 

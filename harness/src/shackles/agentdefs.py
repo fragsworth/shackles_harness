@@ -4,6 +4,7 @@ import os
 from . import procs
 
 DIR = os.path.join(".claude", "agents")
+FALLBACK = "general-purpose"  # the built-in type a session spawns when it registered no shackles-* definition
 GATE_BODY = ("You are a read-only gate of the shackles harness.\n"
              "Your entire instructions are the prompt file named in your task: read it first and follow it exactly.\n"
              "Write nothing, run nothing that changes files, and end with exactly the JSON object the prompt specifies and nothing else.\n")
