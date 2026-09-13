@@ -42,10 +42,17 @@ def test_s2_suite_partition(tmp_path):
     res = r.play(until="TESTS-TO-SUITE", auto_review=True)
     r.act(res.json, "bad_artifact")
     f = mechanical(r, "TESTS-TO-SUITE")
-    assert ids(f) == ["S1"] and "appears 0 times" in f["findings"][0]["quote"]
+    assert ids(f) == ["S1"] and "changed test file ../tests/toy/test_scratch.py appears 0 times" in f["findings"][0]["quote"]
     res = r.next()
     assert res.json["step"] == "TESTS-TO-SUITE" and res.json["attempt"] == 2
-    assert "Test files changed this round under testPaths: [" in open(res.json["prompt_file"], encoding="utf-8").read()
+    prompt = open(res.json["prompt_file"], encoding="utf-8").read()
+    line = [l for l in prompt.splitlines() if l.startswith("Test files changed this round under testPaths: ")][0]
+    printed = json.loads(line.split(": ", 1)[1])
+    assert printed == ["../tests/toy/test_scratch.py", "../tests/toy/test_text.py"], "printed HARNESS-relative, the form S2 accepts (test-A 3.3)"
+    rec = r.act(res.json, "pass", env={"STUB_ARCHIVE": "1"})  # the stub copies the printed list into keep and archive
+    assert rec.code == 0 and rec.json["next_step"] == "TESTS-TO-SUITE-GATE" and not r.exists(f"{FOLDER}/FINDINGS/TESTS-TO-SUITE-2.mechanical.json")
+    suite = r.json(f"{FOLDER}/SUITE.json")
+    assert sorted(suite["keep"] + suite["archive"]) == printed and suite["archive"] == ["../tests/toy/test_scratch.py"]
 
 
 def test_m1_stray_reverted_and_in_scope_kept(tmp_path):

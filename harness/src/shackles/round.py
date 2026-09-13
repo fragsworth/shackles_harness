@@ -327,7 +327,8 @@ class Round:
             rung=rung, gate_runs=bool(gate) and self.gate_runs(gate), overrides=st["overrides"], delegated=self.delegated(),
             findings=findings, carried=st["carried"], previous=previous, question=question, conflicts=conflicts,
             next_finding_id=self.next_finding_id(), frozen=bool(st.get("tests_frozen_at")), sibling_paths=st.get("sibling_paths") or [],
-            changed_tests=checks.changed_tests(self.cfg, self.root, st["base_commit"], spec.get("testPaths") or []) if producer == "TESTS-TO-SUITE" else [],
+            changed_tests=[self.cfg.harness_rel(p) for p in checks.changed_tests(self.cfg, self.root, st["base_commit"], spec.get("testPaths") or [])]
+            if producer == "TESTS-TO-SUITE" else [],
             sub_agents=self.sub_agents_for(name), merge=merge, producer_attempt=producer_attempt)
 
     def render_step(self, name, attempt, write=True):

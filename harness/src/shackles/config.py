@@ -201,6 +201,10 @@ class Config:
             raise RunnerError(f"path escapes the repository: {path}", 2)
         return "" if rel == "." else rel
 
+    def harness_rel(self, path):
+        """Repo-relative posix path -> H-relative posix path, the form prompts, artifacts and findings use (the inverse of repo_rel)."""
+        return procs.posix(os.path.relpath(procs.posix(path), HARNESS_DIR))
+
     def abs_path(self, path):
         return os.path.join(self.harness_root, *procs.posix(path).split("/"))
 

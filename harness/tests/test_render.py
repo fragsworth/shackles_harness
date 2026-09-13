@@ -161,3 +161,13 @@ def test_step_context_write_paths_and_inputs():
     pm = prompts.step_context(cfg, "POSTMORTEM", 1, paths, "wt", "h")
     assert pm["write_paths"] == [paths["folder"], "docs/TODO.md", "docs/CLARIFICATIONS.md"]
     assert paths["history"] in pm["inputs"] and "docs/TODO.md" in pm["inputs"]
+
+
+def test_step_context_says_where_the_round_goes_next():
+    cfg = configmod.Config(os.path.join("r", "harness"), dict(configmod.DEFAULTS), {}, [], fixtures.ROSTER)
+    paths = cfg.round_paths(1)
+    assert prompts.step_context(cfg, "PLAN-AGENTS", 1, paths, "wt", "h")["after_done"].endswith("a clean DONE is accepted and the round advances to PLAN-TO-SPEC")
+    last = prompts.step_context(cfg, "POSTMORTEM", 1, paths, "wt", "h")
+    assert last["after_done"].endswith("a clean DONE is accepted and the round finishes") and "None" not in last["after_done"]
+    assert prompts.step_context(cfg, "POSTMORTEM-GATE", 1, paths, "wt", "h", gate_runs=True)["after_pass"] == "the round finishes"
+    assert prompts.step_context(cfg, "TESTS-TO-SUITE-GATE", 1, paths, "wt", "h", gate_runs=True)["after_pass"] == "the round advances to CLEANUP"

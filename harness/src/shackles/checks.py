@@ -223,7 +223,7 @@ def s2_suite(cfg, obj, root, harness_root, base_commit, test_paths):
     for path in changed:
         n = listed_rel.count(path)
         if n != 1:
-            errors.append(f"SUITE: changed test file {path} appears {n} times in keep/archive (must be exactly once)")
+            errors.append(f"SUITE: changed test file {cfg.harness_rel(path)} appears {n} times in keep/archive (must be exactly once)")
     return errors
 
 

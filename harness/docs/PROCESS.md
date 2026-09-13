@@ -96,7 +96,7 @@ A committed out-of-band edit of PLAN.json returns the round to CHAT-TO-PLAN-GATE
 
 ## Mechanical checks
 
-S1: the artifact is readable and valid (schema and rules); S2: every changed test file is in exactly one of `keep` and `archive`.
+S1: the artifact is readable and valid (schema and rules); S2: every changed test file is in exactly one of `keep` and `archive`, by the H-relative path the prompt prints.
 M0: HEAD moved during the attempt (an agent commit is undone by a soft reset; on a merge attempt it is an infrastructure error).
 M1: changed paths outside WRITE_PATHS, the round folder and the spec files, or inside runner-owned files, are reverted and listed.
 M2: a change under `testPaths` after the tests froze is reverted; on a merge attempt a conflicted test is the non-blocking `T1` instead.

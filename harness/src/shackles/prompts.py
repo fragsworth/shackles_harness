@@ -107,6 +107,10 @@ def step_table(cfg, overrides=()):
     return rows
 
 
+def advances(name):
+    return f"the round advances to {name}" if name else "the round finishes"
+
+
 def artifact_contract(name, paths):
     s = pipeline.step(name)
     if s.kind == "code":
@@ -168,17 +172,16 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
         inputs += [paths["defined"], paths["undefined"],
                    f"{paths['results']}/{producer}-{attempt if producer_attempt is None else producer_attempt}.json"]
     inputs = list(dict.fromkeys(inputs))
-    nxt = pipeline.next_after(gate or name) if s.kind == "gate" or gate is None else gate
     review = " after a review checkpoint with the owner" if (name in cfg["checkpointsAfter"] or (gate in cfg["checkpointsAfter"] and not gate_runs)) and not delegated else ""
     if gate and gate_runs:
         after_done = f"the mechanical checks, then {gate}"
         after_needs_owner = ("the gate rules on your question: withdrawn means you are judged on your assumption; "
                              "upheld pauses the round for the owner, whose answer returns to you as a finding")
     else:
-        after_done = "the mechanical checks; " + (f"{gate} is disabled this round, so " if gate else "") + f"a clean DONE is accepted and the round advances to {pipeline.next_after(gate or name)}{review}"
+        after_done = "the mechanical checks; " + (f"{gate} is disabled this round, so " if gate else "") + f"a clean DONE is accepted and {advances(pipeline.next_after(gate or name))}{review}"
         after_needs_owner = ("the round proceeds on your stated assumption, logged as an undefined judgment call" if delegated
                              else "the round pauses for the owner; their answer returns to you as a finding")
-    after_pass = f"the round advances to {pipeline.next_after(name)}{review}" if s.kind == "gate" else "none"
+    after_pass = f"{advances(pipeline.next_after(name))}{review}" if s.kind == "gate" else "none"
     verify = spec.get("verify") or "none"
     ctx = {
         "name": name, "kind": s.kind, "attempt": attempt, "budget": round(budget, 2), "budget_cap": round(budget_cap, 2),

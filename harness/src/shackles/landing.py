@@ -68,7 +68,7 @@ def landing_check(r, mutate=True):
     if sha and not gitops.is_ancestor(root, sha, "HEAD"):
         clean, tree, conflicted = merge_tree(root, "HEAD", sha)
         if not clean:
-            hrel = [os.path.relpath(p, "harness").replace("\\", "/") for p in conflicted]
+            hrel = [cfg.harness_rel(p) for p in conflicted]
             f = checks.finding("L1", "\n".join(conflicted), f"merge conflict with {target}", "resolve the listed files on top of the target")
             if mutate:
                 st["merge_pending"] = {"target": target, "target_sha": sha, "automerge_tree": tree, "conflicted": hrel}
