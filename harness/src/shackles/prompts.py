@@ -182,8 +182,7 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
                              "upheld pauses the round for the owner, whose answer returns to you as a finding")
     else:
         after_done = "the mechanical checks; " + (f"{gate} is disabled this round, so " if gate else "") + f"a clean DONE is accepted and {advances(pipeline.next_after(gate or name))}{review}"
-        after_needs_owner = ("the round proceeds on your stated assumption, logged as an undefined judgment call" if delegated
-                             else "the round pauses for the owner; their answer returns to you as a finding")
+        after_needs_owner = "the round pauses for the owner; their answer returns to you as a finding"
     after_pass = f"{advances(pipeline.next_after(name))}{review}" if s.kind == "gate" else "none"
     verify = spec.get("verify") or "none"
     defaults = cfg.get("defaultShares") or {}  # the owner's floors, filtered to the steps present: no gate share for a gate that never runs

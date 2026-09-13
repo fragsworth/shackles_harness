@@ -129,11 +129,19 @@ def test_needs_owner_with_the_gate_disabled(tmp_path):
     assert res.json["attempt"] == 2 and "proceed on your stated assumption" in open(res.json["prompt_file"], encoding="utf-8").read()
     d = Repo(tmp_path / "d")
     d.start(extra=["--delegate"])
-    res = d.play(until="PLAN-TO-SPEC", modes={"PLAN-AGENTS:1": "needs_owner"})
-    assert res.json["step"] == "PLAN-TO-SPEC"
-    undefined = d.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md")
-    assert "PLAN-AGENTS attempt 1 assumed: " + stub_agent.ASSUMPTION in undefined and d.state()["judgment_calls"]["undefined"] == 1
-    assert d.run("status").json["undefined_tail"][0].startswith("- PLAN-AGENTS attempt 1 assumed")
+    res = d.play(modes={"PLAN-AGENTS:1": "needs_owner"})
+    assert res.code == 10 and res.json["checkpoint"]["kind"] == "question" and res.json["checkpoint"]["step"] == "PLAN-AGENTS", \
+        "delegation skips only reviews: with no gate to weigh it, the question stops the round (R5-M1)"
+    assert stub_agent.QUESTION in res.json["message"] and stub_agent.ASSUMPTION in res.json["message"]
+    assert any(" override --steps " in c for c in res.json["resume"]), "override is offered at a question (R5-m4)"
+    assert "assumed" not in d.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md") and d.state()["judgment_calls"]["undefined"] == 0, "the runner settles nothing"
+    assert "NEEDS-OWNER -> the round pauses for the owner; their answer returns to you as a finding" in d.read(f"{FOLDER}/PROMPTS/PLAN-AGENTS-1.txt")
+    assert d.run("status").json["checkpoint"]["kind"] == "question"
+    assert d.run("answer", "--text", "use blue", "--quote", "use blue").code == 0
+    res = d.play(until="PLAN-AGENTS:2")
+    assert res.json["attempt"] == 2 and "use blue" in open(res.json["prompt_file"], encoding="utf-8").read()
+    o1 = [e for k, e in d.state()["findings_ledger"].items() if k.startswith("O1")]
+    assert o1 and o1[0]["source"] == "owner" and o1[0]["quote"] == "use blue"
 
 
 def test_upstream_to_each_earlier_producer_and_to_the_plan(tmp_path):

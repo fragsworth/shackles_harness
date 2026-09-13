@@ -15,7 +15,7 @@ SKIP_SOURCES = ("disabled", "override", "no-prose")
 OPEN = ("open", "disputed", "settled")
 RESUME = {
     "review": ["approve", "delegate", "answer", "override", "abandon"],
-    "question": ["answer", "approve", "abandon"], "blocked": ["answer", "approve", "override", "abandon"],
+    "question": ["answer", "approve", "override", "abandon"], "blocked": ["answer", "approve", "override", "abandon"],
     "failure-limit": ["approve", "override", "abandon"], "round-limit": ["approve", "abandon"],
     "hard-stop": ["approve", "abandon"], "spec-edit": ["approve", "abandon"], "upstream-plan": ["approve", "abandon"],
     "approval": ["approve", "delegate", "abandon"], "infra": ["approve", "override", "abandon"],
@@ -1024,12 +1024,9 @@ class Round:
             if gate and self.gate_runs(gate):
                 st["step"] = gate
                 return
-            if self.delegated():
-                self.settle_question(f"{step} attempt {attempt}", "gate disabled, delegated")
-                self.history(f"{step} attempt {attempt}: NEEDS-OWNER proceeds on the stated assumption (delegated)")
-            else:
-                self.raise_checkpoint("question", step, question=f"{st['pending_question']['question']} (assumption: {st['pending_question']['assumption'] or 'none'})")
-                return
+            # no gate weighs the question, so the owner does, delegated or not: delegation skips only review checkpoints (SPEC.md)
+            self.raise_checkpoint("question", step, question=f"{st['pending_question']['question']} (assumption: {st['pending_question']['assumption'] or 'none'})")
+            return
         if gate:
             st["step"] = gate
         else:

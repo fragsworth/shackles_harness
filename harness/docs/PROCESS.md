@@ -80,14 +80,14 @@ Routing findings: `U1` (UPSTREAM, attached to the target), `B1` (BLOCKED), `O1` 
 
 ## Checkpoints and owner commands
 
-Checkpoint kinds: `review` (after a `checkpointsAfter` step), `question` (NEEDS-OWNER upheld, or the gate disabled and not delegated), `blocked`, `failure-limit`, `round-limit`, `hard-stop`, `spec-edit` (before LANDING, never skipped), `upstream-plan`, `approval` (the plan changed), `infra`.
+Checkpoint kinds: `review` (after a `checkpointsAfter` step), `question` (NEEDS-OWNER upheld by the gate, or the gate not running), `blocked`, `failure-limit`, `round-limit`, `hard-stop`, `spec-edit` (before LANDING, never skipped), `upstream-plan`, `approval` (the plan changed), `infra`.
 Every checkpoint message carries the spend versus the quote, the counts of defined and undefined judgment calls, the count added since the last checkpoint and the last five undefined lines with the file's absolute path, and the exact resume commands.
 `approve` continues; at `failure-limit` it resets that step's failures, at `spec-edit` it accepts the baseline on the branch, at `upstream-plan` it needs an edited PLAN.json, at `question` it means "proceed on your stated assumption", and at `blocked` it says the same words although a BLOCKED producer stated no assumption, so `answer --text` or `override` is the natural resume there.
 The CHECKPOINT entry reaches HISTORY after the attempt entry that raised it (`save` writes it).
 `delegate` is approve plus delegation; delegation skips only `review` checkpoints, and `--through STEP` skips those at or before STEP, where STEP may name the producer or its gate (`PLAN-TO-SPEC` and `PLAN-TO-SPEC-GATE` skip the same reviews); a `through` that is absent, null or empty (in the plan or on the command line) skips every review, and one naming no step is refused.
 `answer --text T` turns the text into finding `O1` for the producer of the checkpoint, which runs again with it.
 `override --steps A,B` skips overridable steps not yet accepted, at any time (a producer that already ran and waits for its gate is refused: override the gate, which accepts the artifact as it is), and discards the unrecorded work of a pending attempt of a step it names (HISTORY lists the reverted paths); at a checkpoint it resumes the round when the checkpoint's own step is now overridden, otherwise the checkpoint stands and `approve` follows; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
-NEEDS-OWNER with the gate disabled and the round delegated proceeds on the stated assumption and appends it to `UNDEFINED_JUDGMENT_CALLS.md`; so does a gate verdict that neither upholds nor withdraws the question, and so does an `override` of the gate the question waits at; an `override` of the producer drops its question with a HISTORY line.
+A gate verdict that neither upholds nor withdraws the producer's question proceeds on the stated assumption and appends it to `UNDEFINED_JUDGMENT_CALLS.md`; so does an `override` of the gate the question waits at; an `override` of the producer drops its question with a HISTORY line.
 
 ## Caps and stops
 
