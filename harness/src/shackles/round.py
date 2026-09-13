@@ -884,7 +884,7 @@ class Round:
         if st["status"] == "checkpoint":
             return self.checkpoint_payload(), 10
         return {"kind": "invalid", "round": self.id, "step": step, "attempt": attempt, "errors": errors,
-                "hint": "rerun the same attempt: run next, which prints the action again", "spend": self.spend()}, 2
+                "hint": "rerun the same attempt: run next, which prints the action again", "spend": self.spend(), "warnings": self.notes}, 2
 
     def withdrawn_quotes(self):
         return {" ".join(e.get("quote", "").split()) for e in self.state["findings_ledger"].values() if e.get("status") == "withdrawn"}
