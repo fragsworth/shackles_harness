@@ -1289,13 +1289,19 @@ class Round:
             if name not in st["overrides"]:
                 st["overrides"].append(name)
         pending = st.get("attempt_pending")
-        if pending and pending["step"] in st["overrides"]:  # its unrecorded work is discarded, never swept unchecked into this command's commit
+        if pending:
             keep = [self.repo_rel(self.paths[k]) for k in ("state", "history", "ownerLog")]
-            dirty = checks.dirty(self.root, exclude=keep)
-            checks.revert(self.root, dirty)
-            if dirty:
-                self.history(f"override: unrecorded work of {pending['step']} attempt {pending['attempt']} discarded: {', '.join(p for _, p in dirty)}")
-            st["attempt_pending"] = None
+            if pending["step"] in st["overrides"]:  # its unrecorded work is discarded, never swept unchecked into this command's commit
+                dirty = checks.dirty(self.root, exclude=keep)
+                checks.revert(self.root, dirty)
+                if dirty:
+                    self.history(f"override: unrecorded work of {pending['step']} attempt {pending['attempt']} discarded: {', '.join(p for _, p in dirty)}")
+                st["attempt_pending"] = None
+            else:  # any other override commits everything it finds, so unrecorded work is refused rather than swept in unchecked
+                dirty = self.snapshot(keep, bool(st.get("merge_pending")) and pending["step"] == "SPEC-TO-IMPLEMENTATION")
+                if dirty:
+                    raise RunnerError(f"{pending['step']} attempt {pending['attempt']} has unrecorded work ({', '.join(p for _, p in dirty)}): record it first"
+                                      + (f", or override {pending['step']} to discard it" if pipeline.is_overridable(pending["step"]) else ""), 2)
         self.history("override: " + ", ".join(steps))
 
     def abandon(self, reason, push=True):

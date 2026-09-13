@@ -301,6 +301,28 @@ def test_override_of_the_pending_step_discards_its_unrecorded_work(tmp_path):
     assert not d.exists(f"{FOLDER}/FINDINGS/CLEANUP-1.mechanical.json") and "M1" not in history(d), "nothing was checked because nothing was kept"
 
 
+def test_override_of_another_step_is_refused_while_an_attempt_has_unrecorded_work(tmp_path):
+    """An override that does not name the pending step would commit that attempt's unrecorded work unchecked through the owner command's
+    commit: it is refused until the work is recorded, and M1 then judges it (R5-M3); between record and next it goes through."""
+    r = Repo(tmp_path)
+    r.start()
+    a = r.next().json
+    message = stub_agent.perform(a["prompt_file"], "stray", {})
+    res = r.run("override", "--steps", "TESTS-TO-SUITE", "--quote", "skip the suite step")
+    assert res.code == 2 and res.json["error"].startswith("PLAN-AGENTS attempt 1 has unrecorded work (") and \
+        res.json["error"].endswith("): record it first, or override PLAN-AGENTS to discard it")
+    assert f"{FOLDER}/AGENTS-PLAN.json" in res.json["error"] and "stray.txt" in res.json["error"]
+    assert r.exists("stray.txt") and r.exists(f"{FOLDER}/AGENTS-PLAN.json") and r.log()[0] == "round 0001: PLAN-AGENTS attempt 1 prompt"
+    assert r.state()["overrides"] == [] and "RESUME" not in history(r)
+    rec = r.record("PLAN-AGENTS", 1, message)
+    f = r.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-1.mechanical.json")
+    assert rec.code == 0 and [x["id"] for x in f["findings"]] == ["M1"] and "stray.txt" in f["findings"][0]["quote"], "the stray was judged, not swept in"
+    assert not r.exists("stray.txt") and r.git("ls-files", "stray.txt") == "" and r.exists(f"{FOLDER}/AGENTS-PLAN.json")
+    res = r.run("override", "--steps", "TESTS-TO-SUITE", "--quote", "skip the suite step")
+    assert res.code == 0 and res.json["kind"] == "resumed" and r.state()["overrides"] == ["TESTS-TO-SUITE"] and r.dirty() == ""
+    assert r.next().json["step"] == "PLAN-AGENTS" and r.state()["attempt_pending"]["attempt"] == 2
+
+
 def test_a_refused_owner_command_leaves_no_trace(tmp_path):
     """A refusal raised after the quote was appended undoes the OWNER.log line and the RESUME entry: the pending attempt's record sees no M1
     on the runner's own files (R8b) and the next `next` counts no infrastructure error (R8a) (R5-M2); a resumed payload carries warnings (R5-m7)."""
