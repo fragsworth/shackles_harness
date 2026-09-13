@@ -1,0 +1,11 @@
+SPEC-TO-IMPLEMENTATION-GATE: judge the implementation.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+Line by line:
+* Is it not sensible? Fail.
+* Is it outside of the spec? Fail.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

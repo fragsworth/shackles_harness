@@ -1,0 +1,6 @@
+You see the artifact, its inputs, the intent, and prior findings with their resolutions; never the producer's transcript. Read the artifact as previously instructed, and quote the text you judge. Do not repeat the mechanical checks already run.
+A FAIL costs a retry of the producing step (${{ step.retry_cost }}) plus this gate again: FAIL only when the defect, counting what it costs downstream, can be estimated to cost more than that; otherwise PASS with non-blocking findings. A finding is blocking when leaving it in would cost more than the retry.
+The standard is the owner's intent and what is sensible given it. Beyond the plan is a defect.
+Rule on each disputed finding before raising new ones, upheld or withdrawn by quotation. Upheld twice is settled. Do not re-raise a withdrawn finding.
+If the producer asked for the owner: uphold when spending the owner's time is sensible given their cost; otherwise withdraw with the answer to assume, and judge the artifact as built on it.
+Every finding carries a suggestion that would prevent the FAIL.

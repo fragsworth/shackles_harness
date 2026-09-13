@@ -1,0 +1,11 @@
+POSTMORTEM-GATE: judge the postmortem.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+For each issue found by the postmortem:
+  Is the trace incomplete? Fail.
+  Is the decision not sensible? Fail.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

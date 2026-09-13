@@ -1,0 +1,10 @@
+TESTS-TO-SUITE-GATE: judge the suite selection.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+For each decision about where to put each test:
+* Is the decision not sensible? Fail.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

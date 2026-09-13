@@ -1,0 +1,21 @@
+PLAN-TO-SPEC: turn the approved plan into the spec that the tests, then the code, are each built from alone.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Break the plan into implementation steps until the spec is complete, unambiguous and sensible. Add a high-level test plan in prose covering the whole implementation.
+
+Include integration tests that cross multiple systems, where sensible. Exhaust edge cases, within reason.
+
+Assume a cost of ${{ project.ownerReviewCostPerWord }} per word in the spec, and the spec needs to read as plain English.
+
+Accomplish these tasks by optimizing the budget, within reason. Refactor where sensible.
+
+Carry the plan's non-goals in the spec.
+
+Checkpoint after this step, with the owner.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

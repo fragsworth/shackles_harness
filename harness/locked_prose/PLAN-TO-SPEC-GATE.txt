@@ -1,0 +1,19 @@
+PLAN-TO-SPEC-GATE: judge the spec.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+Too large to review properly in your context? Fail.
+Incomplete? Fail.
+Not sensible? Fail.
+
+Then, for each sentence or idea:
+  Ambiguous, so that two implementers could read it differently? Fail.
+  Unaligned with the owner's intent? Fail.
+  Beyond the plan's scope and non-goals? Fail.
+  Not sensible? Fail.
+
+Otherwise pass. Provide rationale and suggestions to fix failures.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

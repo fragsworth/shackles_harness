@@ -1,0 +1,100 @@
+# This file contains (and only contains) user settings, and is not to be
+# edited without owner approval.
+# Money is USD.
+
+shackles: "A loop-engineered software development harness that restricts agents to judgment calls inside a carefully monitored process. The harness is intended to work with general software development. It is still in early development."
+
+currency: USD
+
+budget: 50000              # project target, not enforced
+hardStopBudgetMultiple: 6  # multiple of a round's budget at which in a round stops
+lostValuePerHour: 1          # globally lost budget per hour of time
+
+# Owner settings
+ownerHourlyRate: 10          # per hour of the owner's attention
+costToWaitForOwner: 5        # flat, per turn
+planCostPerWord: 0.1         # per word in a plan
+specCostPerWord: 0.1         # same, for spec
+
+# Living tokens are charged when created, refunded on removal, and count towards both prose and code.
+livingFileTokenCap: 10000                   # size of file before charging extra for tokens
+livingFileCostPerToken: 0.25                # price per token below file cap
+livingFileCostPerTokenOverCap: 0.5          # price per token above file cap
+livingFileBaseCost: 10                      # per new living file
+testBaseCost: 3                             # per new suite test
+tokenBytes: 4                               # estimated bytes per token
+
+# Percent of budget cap allowed for refactoring work during a round.
+# This cap is not reduced by gains; it acts as a limit on scope.
+maxRefactorOverhead: 0.3
+
+# The gates, in intended run order, and whether they are enabled or not. 1 = enabled
+gates:
+  CHAT-TO-PLAN-GATE: 0           # mechanical, run by the runner; checkpoint after plan
+  PLAN-AGENTS-GATE: 0
+  PLAN-TO-SPEC-GATE: 0           # checkpoint after spec
+  SPEC-TO-TESTS-GATE: 0
+  SPEC-TO-IMPLEMENTATION-GATE: 0
+  TESTS-TO-SUITE-GATE: 0         # checkpoint before landing
+  # Standard landing happens here, after TESTS-TO-SUITE.
+  POSTMORTEM-GATE: 0
+  # Round ends here, all agents stop.
+
+# Minimum per-stage budgets.
+defaultShares:
+  work:
+    CHAT-TO-PLAN: 0.05
+    PLAN-AGENTS: 0.03
+  gates:
+    CHAT-TO-PLAN: 0.02
+    PLAN-AGENTS: 0.03
+
+# Paths
+livingSourcePaths: ["src/", "docs/", "tests/"]
+lockedProsePath: "locked_prose/"
+archivesPath: "archives/"
+
+# Round Paths
+# One folder per round under archives/rounds/; NNNN is the round id. `folder` is that
+# folder, from the harness root; every other entry is relative to `folder`.
+roundPaths:
+  folder: "archives/rounds/NNNN/"
+  artifacts:                          # written by producer steps
+    plan: "PLAN.json"                 # CHAT-TO-PLAN
+    agentsPlan: "AGENTS-PLAN.json"    # PLAN-AGENTS
+    spec: "SPEC.json"                 # PLAN-TO-SPEC, machine-read
+    specProse: "SPEC.md"              # PLAN-TO-SPEC, owner-read
+    suite: "SUITE.json"               # TESTS-TO-SUITE
+    postmortem: "POSTMORTEM.md"       # POSTMORTEM
+  runner:                             # written by the runner
+    state: "STATE.json"               # where the round is; the runner's only state
+    history: "HISTORY.md"             # one entry per attempt, appended
+    ownerLog: "OWNER.log"             # this round's slice of the owner's words
+  attempts:                           # one file per STEP-attempt
+    prompts: "PROMPTS/"               # STEP-attempt.txt, the rendered prompt
+    results: "RESULTS/"               # STEP-attempt.json, the agent's final message
+    findings: "FINDINGS/"             # STEP-attempt.json, the gate's verdict
+  testsArchive: "tests-archive/"      # tests kept with the round, moved by the runner
+  judgmentCalls:                      # one short line providing a trail when a judgment call was made
+    defined: "DEFINED_JUDGMENT_CALLS.md"
+    undefined: "UNDEFINED_JUDGMENT_CALLS.md"
+
+maxSimultaneousSubAgentsPerRound: 2
+maxRoundAttempts: 2       # maximum round retries before a runner should stop
+maxFailuresBeforeStop: 3  # maximum gate rejections before a round should stop
+maxTurnsPerRun: 120
+maxRunWallClockHours: 12
+verifyTimeoutSeconds: 600
+
+gatesFraction: 0.3  # sums to 1 with workFraction
+workFraction: 0.7
+
+# Agent overhead values
+estOutputFraction: 0.2             # assumed output share of tokens
+driverUsdPerStep: 1.0              # runner overhead per step
+
+subAgentsFile: subAgents.yaml
+maxAgent: max
+gateAgent: max
+systemTestAgent: medium
+

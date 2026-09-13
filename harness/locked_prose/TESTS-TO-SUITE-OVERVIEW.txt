@@ -1,0 +1,13 @@
+TESTS-TO-SUITE: choose which of this round's tests join the permanent suite and which are archived with the round.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Choose where each test goes: In the permanent suite, or in the round archive? Do what is sensible. Sensibility involves a realistic analysis of expected long-term costs and benefits.
+
+Tests in the permanent suite means every round runs it, sometimes multiple times, even small rounds. Tests outside the suite mean the test will likely be ignored forever. If there is a middle ground worth raising to the owner, flag it.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

@@ -1,0 +1,11 @@
+SPEC-TO-IMPLEMENTATION: write the code the spec describes, and nothing else, until the frozen tests pass.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Implement the spec. Do what is sensible.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

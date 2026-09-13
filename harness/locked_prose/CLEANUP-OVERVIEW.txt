@@ -1,0 +1,11 @@
+CLEANUP: standard cleanup, no new behaviour.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Clean up the round, so that it can be landed without issue.
+
+Checkpoint after this step, with the owner.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

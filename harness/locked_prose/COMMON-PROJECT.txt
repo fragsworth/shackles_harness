@@ -1,0 +1,9 @@
+Project vision: {{ project.shackles }}
+Budget, dollars, a project target, not enforced: total {{ project.budget }}, remaining {{ project.remaining }}.
+Costs, dollars, estimated, not real: an hour of elapsed time {{ project.lostValuePerHour }}.
+Living tokens are charged when created and refunded on removal, in code and prose alike: {{ project.livingFileCostPerToken }} a token up to {{ project.livingFileTokenCap }} tokens in a file, {{ project.livingFileCostPerTokenOverCap }} beyond that.
+A new living file costs {{ project.livingFileBaseCost }} beyond its tokens; a new suite test {{ project.testBaseCost }}. Add either only when it earns that.
+Living files are {{ project.livingSourcePaths }}; a token is {{ project.tokenBytes }} bytes. Nothing outside those paths is charged per token.
+Refactoring in a round is encouraged, capped at {{ project.maxRefactorOverhead }} of its budget; the cap limits scope, and gains do not change it.
+Gates, in order: {{ project.gates }}
+Record any DEFINED JUDGMENT CALL in your round's DEFINED_JUDGMENT_CALLS.md and any UNDEFINED JUDGMENT CALL in UNDEFINED_JUDGMENT_CALLS.md: one short line appended per call.

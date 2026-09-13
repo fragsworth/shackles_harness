@@ -1,0 +1,17 @@
+POSTMORTEM: report on what should change.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Determine what, if anything, stood out as wrong in the previous round. First, just identify issues, and rank them by importance. Log them.
+
+For each issue, trace the component(s) touched by the issue to the plan(s) that originated them, and the owner words that led to the plan(s).
+
+Then, for each issue, decide:
+1) The plan(s) and owner words related to the components, and project vision, are all in alignment, and this was missed: propose a sensible fix and add it to TODOs for next round.
+or 2) Something is in conflict or ambiguous, and the owner is unaware: add it to CLARIFICATIONS for owner review with the plan(s) and exact owner words that led to the conflict. If possible, find the agent judgment call that disambiguated the issue without the owner's realization.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

@@ -1,0 +1,5 @@
+ROUND {{ round.id }}. Folder {{ round.folder }}. Base commit {{ round.base_commit }}; diffs are measured from it.
+Approved plan:
+{{ round.plan }}
+Quote {{ round.budget }}; spent {{ round.spend }}; remaining {{ round.remaining }}.
+Round folder: AGENTS-PLAN.json (PLAN-AGENTS); SPEC.json and SPEC.md (PLAN-TO-SPEC); SUITE.json (TESTS-TO-SUITE); POSTMORTEM.md (POSTMORTEM); DEFINED_JUDGMENT_CALLS.md and UNDEFINED_JUDGMENT_CALLS.md, one line per judgment call of each kind, appended by the agent that made it; tests-archive/, archived tests, moved by the runner; FINDINGS/, every gate verdict, saved by the runner; HISTORY.md, the log of attempts, verdicts, final messages and spend, appended by the runner.

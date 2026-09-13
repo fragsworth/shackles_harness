@@ -1,0 +1,9 @@
+PLAN-AGENTS-GATE: judge the agent plan.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+Is anything about it not sensible? Fail. Then line by line: is this line not sensible? Fail. Small imbalances are non-blocking findings.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

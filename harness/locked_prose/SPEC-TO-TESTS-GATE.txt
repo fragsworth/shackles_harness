@@ -1,0 +1,13 @@
+SPEC-TO-TESTS-GATE: judge the tests.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-GATE }}
+
+For each component of the spec:
+* Is it not covered by tests? Fail.
+
+For each test:
+* Is it not sensible? Fail.
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

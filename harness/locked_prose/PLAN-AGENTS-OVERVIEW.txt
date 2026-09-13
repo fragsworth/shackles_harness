@@ -1,0 +1,14 @@
+PLAN-AGENTS: choose the agent, sub-agents and budget share for each step and gate of this round.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Choose what is sensible given context windows, cost, agent strengths, the task, the vision, and anything else you deem reasonable to consider. Optimize the budget, within reason.
+Expect one or two rejections per gated step and size for them.
+Plan to refactor where sensible, but avoid the refactor cap.
+Accomplish these tasks by optimizing the budget, within reason.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}

@@ -1,0 +1,11 @@
+SPEC-TO-TESTS: write the tests the implementation must pass, from the spec alone, before it exists.
+
+{{ prose.COMMON-PROJECT }}
+{{ prose.COMMON-ROUND }}
+{{ prose.COMMON-OVERVIEW }}
+
+Cover the spec's test plan and the plan's validation steps. Do this sensibly.
+
+The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
+
+{{ plumbing.PROCESS-INSTRUCTIONS }}
