@@ -58,11 +58,13 @@ def test_probe_runs_the_stub_headlessly_for_a_producer(tmp_path):
 @pytest.mark.slow
 def test_sandbox_builds_and_a_stub_round_finishes_there(tmp_path):
     r = Repo(tmp_path)
+    r.append("harness/docs/TODO.md", "- TODO-MARKER: an item the sandbox planner must see\n")
     target = str(tmp_path / "sb")
     res = r.run("sandbox", "--dir", target)
     assert res.code == 0, res
     repo = res.json["repo"]
     assert os.path.isdir(res.json["origin"]) and os.path.exists(os.path.join(repo, "src", "toy", "text.py"))
+    assert "TODO-MARKER" in procs.read_text(os.path.join(repo, "harness", "docs", "TODO.md")), "the copied carry-forward files survive the toy"
     sb = Repo.__new__(Repo)
     sb.tmp, sb.root, sb.explicit_root = target, repo, repo
     sb.scratch = os.path.join(target, "scratch")

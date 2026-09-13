@@ -132,7 +132,9 @@ def write_toy(root):
             shutil.copyfile(src, dst)
     for rel, header in (("harness/docs/TODO.md", "# TODO: carry-forward items, one section per round.\n"),
                         ("harness/docs/CLARIFICATIONS.md", "# CLARIFICATIONS: questions for the owner, one section per round.\n")):
-        procs.write_text(os.path.join(root, *rel.split("/")), header)
+        path = os.path.join(root, *rel.split("/"))
+        if not os.path.exists(path):  # the sandbox keeps the copied files, so its planner sees the real items
+            procs.write_text(path, header)
 
 
 def copy_runner(root):

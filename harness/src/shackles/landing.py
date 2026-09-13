@@ -65,7 +65,6 @@ def landing_check(r, mutate=True):
     """(findings, target, target sha): merge the target into the round, then verify and the suite; never pushes or tags."""
     cfg, root, st = r.cfg, r.root, r.state
     target, sha = landing_target(r)
-    st["main_before"] = sha
     if sha and not gitops.is_ancestor(root, sha, "HEAD"):
         clean, tree, conflicted = merge_tree(root, "HEAD", sha)
         if not clean:

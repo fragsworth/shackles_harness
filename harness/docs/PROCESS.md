@@ -109,7 +109,7 @@ Checks run at `record` on the uncommitted diff of the attempt; strays are revert
 
 ## Costs
 
-Step budget: producers get `quote x workFraction x shares.work[step]`, gates `quote x gatesFraction x shares.gates[producer]`; shares come from AGENTS-PLAN.json once accepted, else `defaultShares`, else an equal split of the remainder over unassigned steps.
+Step budget: producers get `quote x workFraction x shares.work[step]`, gates `quote x gatesFraction x shares.gates[producer]`; shares come from AGENTS-PLAN.json once accepted, else `defaultShares`, else an equal split of the remainder over unassigned steps; only LLM gates take gate shares (CHAT-TO-PLAN-GATE is mechanical, so a `CHAT-TO-PLAN` gate share is ignored).
 The per-run cap is `max(minRunUsd, budget x hardStopBudgetMultiple)`; `retry_cost` is the producer's budget plus `spawnCost` plus `driverUsdPerStep`.
 An agent run costs `--cost` (source `agent-cli`), else `--tokens` priced by the rung with the `estOutputFraction` blend plus `spawnCost` per spawn (`agent-tokens`), else the step budget as a flagged estimate; never below `spawnCost`.
 The driver costs `driverUsdPerStep` per `record` and once at `start`.
@@ -129,7 +129,8 @@ A hand merge by the owner in the worktree lands without any command, before or a
 A merge attempt ends in the merge commit or not at all: on L3, an invalid result, M0, UPSTREAM or BLOCKED the runner aborts the merge, commits the record as usual, and the next attempt re-establishes the merge from the conflicted state.
 The gate's `DIFF_FILE` for a code step is the diff of the producer's write paths since the step started, without the round folder; after a merge commit the step starts at the automerge tree, so the sibling's changes never appear in it.
 `sync_main` after the last commit merges `origin/<mainBranch>` and pushes in a bounded loop; a conflict leaves `main_synced: false` and the tail arrives with the next landing.
-Invariants: one round per id, nothing created before the claim wins, one worktree per round, nothing touches main before LANDING, one runner per round (the fence), main only fast-forwards, no auto-resolved conflict, one living entry per landed round, `check` writes nothing shared, agents get no push credential, crash recovery by rerun.
+Invariants: one round per id, nothing created before the claim wins, one worktree per round, nothing touches main before LANDING, one runner per round (the fence), main only fast-forwards, no auto-resolved conflict, one living entry per landed round, `check` writes nothing shared, headless agents get no push credential, crash recovery by rerun.
+In driver mode a sub-agent inherits the session's git credentials (`scrubEnv` applies to headless runs only), so only the agent definition's `disallowedTools`, G1 and M0 stand between it and a push.
 Landing conflicts converge because the merge attempt is measured against the automerge tree, not against the step start.
 
 ## Spec files

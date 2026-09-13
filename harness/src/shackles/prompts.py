@@ -101,8 +101,9 @@ def step_table(cfg, overrides=()):
     for s in pipeline.PIPELINE:
         if s.kind in ("plan", "producer", "code"):
             gate = pipeline.gate_of(s.name)
-            rows.append({"step": s.name, "gate": gate, "gate_runs": bool(gate) and cfg.gate_enabled(gate) and gate not in overrides,
-                         "overridden": s.name in overrides})
+            llm = bool(gate) and pipeline.step(gate).kind == "gate"  # the approval gate is mechanical: no agent, no gate share
+            rows.append({"step": s.name, "gate": gate, "overridden": s.name in overrides,
+                         "gate_runs": llm and cfg.gate_enabled(gate) and gate not in overrides and s.name not in overrides})
     return rows
 
 

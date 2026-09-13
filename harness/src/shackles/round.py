@@ -180,7 +180,7 @@ class Round:
 
     def runner_head(self):
         """The runner's newest commit (every one is titled `round NNNN: ...`): anything HEAD has beyond it, an agent committed."""
-        return gitops.git(self.root, "rev-list", "-n", "1", f"--grep=^round {self.id}: ", "HEAD", check=False) or None
+        return gitops.git(self.root, "rev-list", "-n", "1", "--extended-regexp", f"--grep=^round {self.id}: ", "HEAD", check=False) or None
 
     # ---- pipeline helpers --------------------------------------------------
     def prose_names(self):
@@ -503,7 +503,7 @@ class Round:
         st = self.state
         own = [name] if pipeline.step(name).kind in ("plan", "producer", "code") else []
         for step in own + pipeline.downstream(name):
-            for key in ("failures", "step_starts", "step_commits", "last_findings"):
+            for key in ("failures", "step_starts", "step_commits"):
                 st[key].pop(step, None)
             for k, e in st["findings_ledger"].items():
                 if e.get("step") == step and e.get("status") in OPEN:
@@ -729,7 +729,6 @@ class Round:
         for f in findings:
             self.add_finding("SPEC-TO-IMPLEMENTATION", f, "landing", n)
         st["failures"]["SPEC-TO-IMPLEMENTATION"] = st["failures"].get("SPEC-TO-IMPLEMENTATION", 0) + 1
-        st["last_findings"]["SPEC-TO-IMPLEMENTATION"] = [rel]
         st["round_retries"] += 1
         st["resume_step"], st["step"] = "LANDING", "SPEC-TO-IMPLEMENTATION"
         st["step_starts"].pop("SPEC-TO-IMPLEMENTATION", None)
@@ -952,7 +951,6 @@ class Round:
             for f in blocking:
                 self.add_finding(step, f, "mechanical", attempt)
             st["failures"][step] = st["failures"].get(step, 0) + 1
-            st["last_findings"][step] = [rel]
             self.history(f"{step} attempt {attempt}: mechanical findings {', '.join(f['id'] for f in blocking)}")
             self.limit_check(step)
             return
@@ -1042,7 +1040,6 @@ class Round:
             self.write_findings(rel, {"verdict": "FAIL", "findings": [f], "source": "mechanical", "step": step, "attempt": attempt})
             self.add_finding(step, f, "mechanical", attempt)
             st["failures"][step] = st["failures"].get(step, 0) + 1
-            st["last_findings"][step] = [rel]
             self.limit_check(step)
             return
         f = checks.finding("U1", obj.get("notes") or "", f"{step} returned UPSTREAM: the artifact of {target} is wrong", "fix the contradiction quoted", source="upstream")
@@ -1118,7 +1115,6 @@ class Round:
             self.complete(step)
             return
         st["failures"][producer] = st["failures"].get(producer, 0) + 1
-        st["last_findings"][producer] = [rel]
         st["step"] = producer
         self.limit_check(producer)
 
@@ -1314,10 +1310,6 @@ def validate_plan(cfg, plan, delegate, through, overrides):
             errors.append(f"PLAN: provided_artifacts.{key} is not an artifact key")
         elif not os.path.exists(path):
             errors.append(f"PLAN: provided_artifacts.{key} file missing: {path}")
-    for name in overrides:
-        s = pipeline.BY_NAME.get(name)
-        if s and s.artifact and s.kind == "producer" and s.artifact not in (plan.get("provided_artifacts") or {}) and name in ("PLAN-TO-SPEC",):
-            errors.append(f"PLAN: overriding {name} needs provided_artifacts.{s.artifact}")
     return errors
 
 
@@ -1374,7 +1366,7 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
         stale = checks.e1_spec_edits(root, target, files + [specguard.SPEC_YAML, specguard.BASELINE])
         if stale:
             raise RunnerError(f"spec files differ from {target}, which the round starts from: {', '.join(sorted(stale))}; "
-                              "commit and push them first, or use --no-branch", 2)
+                              "commit and push them first (or pull, when origin is ahead), or use --no-branch", 2)
         rid, branch_name = landing.claim(root, cfg, branch)
         wt = os.path.join(main_root, *cfg["worktreeDir"].strip("/").split("/"), f"round-{cfg.round_id(rid)}")
         if os.path.exists(wt) or gitops.branch_exists(root, branch_name):
@@ -1408,11 +1400,10 @@ def start(root, plan_path, budget=None, branch=None, no_branch=False, delegate=F
         "budget_usd": float(budget if budget is not None else plan["quote_usd"]),
         "spend": {"entries": [], "agent_usd": 0.0, "driver_usd": 0.0, "owner_usd": 0.0, "living_usd": 0.0},
         "base_commit": head, "prose_commit": head, "approval": approval, "overrides": overrides, "checkpoint": None,
-        "pending_question": None, "findings_ledger": {}, "last_findings": {}, "carried": [], "tests_frozen_at": None,
+        "pending_question": None, "findings_ledger": {}, "carried": [], "tests_frozen_at": None,
         "merge_pending": None, "resume_step": None, "spec_edits": [], "hard_stop_raised": False, "round_limit_raised": False,
-        "landed_at": None, "abandoned_at": None, "main_before": None, "judgment_calls": {"defined": 0, "undefined": 0},
-        "runner_commit": head, "owner_since": min(since) if since else None, "agent_override": agent, "words_charged": {},
-        "undefined_at_checkpoint": 0,
+        "landed_at": None, "abandoned_at": None, "judgment_calls": {"defined": 0, "undefined": 0},
+        "owner_since": min(since) if since else None, "agent_override": agent, "words_charged": {}, "undefined_at_checkpoint": 0,
     }
     r.state["inputs_hash"]["PLAN"] = sha_of(r.abs(r.paths["plan"]))
     procs.write_text(r.abs(r.paths["history"]), f"# Round {r.id}\n\nStarted {r.state['created_at']} on {branch_name}; quote ${r.state['budget_usd']}.\n\n")

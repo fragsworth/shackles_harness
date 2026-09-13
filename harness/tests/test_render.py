@@ -136,6 +136,16 @@ def test_fixture_gate_prose_note_follows_the_gate_flag(fixture_repo):
     assert "PLAN-AGENTS-GATE: fixture gate prose." in rendered["PLAN-AGENTS"]["text"]
 
 
+def test_step_table_reports_the_approval_gate_as_not_running():
+    data = dict(configmod.DEFAULTS, gates={"CHAT-TO-PLAN-GATE": 1, "PLAN-AGENTS-GATE": 1})
+    cfg = configmod.Config(os.path.join("r", "harness"), data, {}, [], fixtures.ROSTER)
+    rows = {row["step"]: row for row in prompts.step_table(cfg, overrides=["PLAN-AGENTS"])}
+    assert rows["CHAT-TO-PLAN"]["gate"] == "CHAT-TO-PLAN-GATE" and rows["CHAT-TO-PLAN"]["gate_runs"] is False, "mechanical: no agent, no gate share"
+    assert rows["PLAN-AGENTS"]["gate_runs"] is False and rows["PLAN-AGENTS"]["overridden"] is True
+    rows = {row["step"]: row for row in prompts.step_table(cfg)}
+    assert rows["PLAN-AGENTS"]["gate_runs"] is True and rows["CLEANUP"]["gate"] is None and rows["CLEANUP"]["gate_runs"] is False
+
+
 def test_step_context_write_paths_and_inputs():
     cfg = configmod.Config(os.path.join("r", "harness"), dict(configmod.DEFAULTS), {}, [], fixtures.ROSTER)
     paths = cfg.round_paths(2)

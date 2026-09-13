@@ -142,9 +142,9 @@ SCHEMAS = {
         "required": ["round", "id", "branch", "mode", "created_at", "status", "step", "attempt_pending", "attempts",
                      "failures", "infra_errors", "round_retries", "step_starts", "step_commits", "inputs_hash",
                      "budget_usd", "spend", "base_commit", "prose_commit", "approval", "overrides", "checkpoint",
-                     "pending_question", "findings_ledger", "last_findings", "carried", "tests_frozen_at",
+                     "pending_question", "findings_ledger", "carried", "tests_frozen_at",
                      "merge_pending", "resume_step", "spec_edits", "hard_stop_raised", "round_limit_raised",
-                     "landed_at", "abandoned_at", "main_before", "judgment_calls", "runner_commit"],
+                     "landed_at", "abandoned_at", "judgment_calls"],
         "properties": {
             "round": INT, "id": STR, "branch": STR, "mode": {"type": "str", "enum": ["worktree", "no-branch"]},
             "status": {"type": "str", "enum": ["active", "checkpoint", "finished", "abandoned"]},
