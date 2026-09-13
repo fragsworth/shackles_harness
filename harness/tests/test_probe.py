@@ -42,6 +42,12 @@ def test_probe_manual_positions_a_gate_with_a_planted_defect(tmp_path):
     out = res.json
     assert out["action"]["step"] == "PLAN-TO-SPEC-GATE" and out["action"]["kind"] == "gate" and out["expect"]["verdict"] == "FAIL"
     assert "dashboard" in procs.read_text(os.path.join(out["action"]["worktree"], "harness", "archives", "rounds", "0001", "SPEC.md"))
+    project = os.path.join(out["action"]["worktree"], "harness", "project.yaml")  # the owner's comments survive the probe's copy (R4-n8)
+    comments = lambda path: sum(1 for l in procs.read_text(path).splitlines() if "#" in l)
+    assert comments(project) >= comments(os.path.join(REPO_ROOT, "harness", "project.yaml")) > 0
+    probe_cfg = configmod.load(out["action"]["worktree"])
+    assert probe_cfg.gate_enabled("PLAN-TO-SPEC-GATE") and not probe_cfg.gate_enabled("CHAT-TO-PLAN-GATE") and probe_cfg["lostValuePerHour"] == 0
+    assert probe_cfg["livingSourcePaths"] == ["../src/", "../tests/", "docs/"] and probe_cfg["agentCommand"][1:] == fixtures.stub_command()[1:]
     prompt = procs.read_text(out["action"]["prompt_file"])
     assert "STEP: PLAN-TO-SPEC-GATE" in prompt
     result = out["action"]["result_file"]

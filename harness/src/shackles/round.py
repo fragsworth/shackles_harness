@@ -1340,7 +1340,7 @@ class Round:
                 "checkpoint": st.get("checkpoint"), "attempts": st["attempts"], "failures": st["failures"], "round_retries": st["round_retries"],
                 "spend": self.spend(), "living_preview_usd": living, "judgment_calls": self.judgment_counts(),
                 "undefined_tail": self.undefined_tail(), "undefined_file": self.abs(self.paths["undefined"]),
-                "hard_stop": ledger.hard_stop(self.cfg, st), "branch": st["branch"], "root": self.root, "spec_edits": st["spec_edits"]}
+                "hard_stop": ledger.hard_stop(self.cfg, st), "round_branch": st["branch"], "root": self.root, "spec_edits": st["spec_edits"]}
 
     def check_payload(self):
         st = self.state

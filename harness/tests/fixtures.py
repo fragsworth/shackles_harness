@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -12,7 +13,7 @@ import yaml
 
 from shackles import cli
 from shackles import config as configmod
-from shackles import gitops, pipeline, procs, specguard
+from shackles import gitops, pipeline, probe, procs, specguard
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -97,13 +98,14 @@ def write_spec(root, gates=None, config=None, spec="fixture"):
             shutil.copyfile(os.path.join(REPO_ROOT, *rel.split("/")), dst)
         for name in os.listdir(os.path.join(REPO_ROOT, "harness", "locked_prose")):
             shutil.copyfile(os.path.join(REPO_ROOT, "harness", "locked_prose", name), os.path.join(prose_dir, name))
-        data = configmod.load_yaml(os.path.join(h, "project.yaml"))
-        data["livingSourcePaths"] = ["../src/", "../tests/", "docs/"]
-        data["suiteCommand"], data["agentCommand"], data["lostValuePerHour"] = toy_verify(), stub_command(), 0
-        for g, on in (gates or {}).items():
-            data["gates"][g] = 1 if on else 0
-        data.update(config or {})
-        procs.write_text(os.path.join(h, "project.yaml"), yaml.safe_dump(data, sort_keys=False))
+        path = os.path.join(h, "project.yaml")
+        text = procs.read_text(path)
+        flips = {**{g: 1 if on else 0 for g, on in (gates or {}).items()}, **((config or {}).get("gates") or {}), "lostValuePerHour": 0}
+        for key, value in flips.items():  # scalars are flipped in place and the other keys replaced or appended, so the owner's comments survive (R4-n8)
+            text = re.sub(rf"^([ \t]*{re.escape(key)}:[ \t]*)\S+", rf"\g<1>{value}", text, count=1, flags=re.M)
+        values = {"livingSourcePaths": ["../src/", "../tests/", "docs/"], "suiteCommand": toy_verify(), "agentCommand": stub_command()}
+        values.update({k: v for k, v in (config or {}).items() if k != "gates"})
+        procs.write_text(path, probe.set_yaml_keys(text, values))
         return
     procs.write_text(os.path.join(h, "AGENTS.md"), AGENTS_MD)
     procs.write_text(os.path.join(h, "project.yaml"), yaml.safe_dump(fixture_project(gates, config), sort_keys=False))

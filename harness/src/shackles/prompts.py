@@ -10,8 +10,9 @@ CHAT_GATE_SENTENCE = ("CHAT-TO-PLAN-GATE is mechanical: start validates PLAN.jso
                       "recorded in it.")
 ROUND_KEYS = ("id", "number", "folder", "worktree", "harness_root", "branch", "base_commit", "prose_commit", "plan",
               "budget", "spend", "remaining", "status", "step", "history", "postmortems", "postmortem_paths",
-              "judgment_files", "judgment_calls", "owner_log", "todos", "clarifications", "steps", "runner", "agent_override")
+              "judgment_files", "judgment_calls", "owner_log", "todos", "clarifications", "steps", "runner", "agent_override", "draft_plan")
 BEFORE_ROUND = ("history", "postmortems", "postmortem_paths", "remaining", "todos", "clarifications", "steps", "runner")
+DRAFT_PLAN = "DRAFT-PLAN.json"  # the driver's draft, beside project.yaml (gitignored)
 
 
 def plumbing_reader():
@@ -74,6 +75,8 @@ def empty_round_context(**known):
     ctx["steps"] = []
     ctx["runner"] = "harness/src/run.py"
     ctx.update(known)
+    if "harness_root" in known:
+        ctx["draft_plan"] = os.path.join(known["harness_root"], DRAFT_PLAN)  # one path shape on the start line the driver copies
     return ctx
 
 

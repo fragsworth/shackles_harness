@@ -344,6 +344,7 @@ def test_status_spend_and_check_are_read_only(tmp_path):
     head = r.head()
     status = r.run("status").json
     assert status["step"] == "SPEC-TO-IMPLEMENTATION" and status["attempt_pending"]["attempt"] == 1 and "undefined_file" in status
+    assert status["round_branch"] == r.state()["branch"] and "branch" not in status, "the round's branch, not the checkout's (R4-n3)"
     assert status["living_preview_usd"] > 0, "before landing: the charge the diff from base_commit would book"
     spend = r.run("spend").json
     assert spend["total_usd"] > 0 and spend["quote_usd"] == 100.0
@@ -384,8 +385,9 @@ def test_render_command_on_a_round_has_no_side_effects(tmp_path):
     res = r.run("render", "--step", "CHAT-TO-PLAN")
     assert res.code == 0 and "STEP: CHAT-TO-PLAN" in res.json["prompt"] and "# TODO" in res.json["prompt"]
     harness = os.path.join(r.root, "harness")
-    assert f'"{harness}/DRAFT-PLAN.json": JSON object with' in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"
-    start = f'py -3.13 "{os.path.join(harness, "src", "run.py")}" --root "{r.root}" start --plan "{harness}/DRAFT-PLAN.json"'
+    draft = os.path.join(harness, "DRAFT-PLAN.json")  # one separator throughout, the line a driver copies (R4-n4)
+    assert f'"{draft}": JSON object with' in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"
+    start = f'py -3.13 "{os.path.join(harness, "src", "run.py")}" --root "{r.root}" start --plan "{draft}"'
     assert start in res.json["prompt"], "the printed start command names the repository it was rendered for"
 
 
