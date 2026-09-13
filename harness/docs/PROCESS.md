@@ -81,7 +81,7 @@ Routing findings: `U1` (UPSTREAM, attached to the target), `B1` (BLOCKED), `O1` 
 ## Checkpoints and owner commands
 
 Checkpoint kinds: `review` (after a `checkpointsAfter` step), `question` (NEEDS-OWNER upheld, or the gate disabled and not delegated), `blocked`, `failure-limit`, `round-limit`, `hard-stop`, `spec-edit` (before LANDING, never skipped), `upstream-plan`, `approval` (the plan changed), `infra`.
-Every checkpoint message carries the spend versus the quote, the counts of defined and undefined judgment calls, the undefined lines added since the last checkpoint with the file's absolute path, and the exact resume commands.
+Every checkpoint message carries the spend versus the quote, the counts of defined and undefined judgment calls, the count added since the last checkpoint and the last five undefined lines with the file's absolute path, and the exact resume commands.
 `approve` continues; at `failure-limit` it resets that step's failures, at `spec-edit` it accepts the baseline on the branch, at `upstream-plan` it needs an edited PLAN.json, at `question` it means "proceed on your stated assumption", and at `blocked` it says the same words although a BLOCKED producer stated no assumption, so `answer --text` or `override` is the natural resume there.
 The CHECKPOINT entry reaches HISTORY after the attempt entry that raised it (`save` writes it).
 `delegate` is approve plus delegation; delegation skips only `review` checkpoints, and `--through STEP` skips those at or before STEP, where STEP may name the producer or its gate (`PLAN-TO-SPEC` and `PLAN-TO-SPEC-GATE` skip the same reviews); a `through` that is absent, null or empty (in the plan or on the command line) skips every review, and one naming no step is refused.

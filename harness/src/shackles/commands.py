@@ -36,7 +36,7 @@ def add_parsers(sub):
     rc.add_argument("--result", required=True)
     rc.add_argument("--cost", type=float, help="the run's cost in USD as the CLI reported it")
     rc.add_argument("--tokens", type=int, help="else the run's token total, priced at the rung (without either, the step budget is booked as an estimate)")
-    rc.add_argument("--agent", help="the roster rung that actually ran, when it is not the action's; the run is priced at it and HISTORY flags it")
+    rc.add_argument("--agent", help="the roster rung that actually ran; when it differs from the action's rung, the run is priced at it and HISTORY flags it")
     rc.add_argument("--spawns", type=int, default=0, help="sub-agents the run spawned, each charged the rung's spawnCost with --tokens")
     rc.add_argument("--no-push", action="store_true")
     for name in ("approve", "delegate", "answer", "override", "abandon"):

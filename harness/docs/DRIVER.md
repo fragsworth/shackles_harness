@@ -9,7 +9,7 @@ The agent definitions (`.claude/agents/shackles-producer-<rung>.md` and `shackle
 The runner cannot see your session's agent list, so the action never guesses: your own list of available agent types is the authority on whether `shackles-producer-<rung>` exists for you.
 The action's `agent_type`, `model` and `effort` describe the rung the plan chose, whether or not your session can run it; `record --agent` is where the rung that actually ran is recorded.
 Without the definitions, spawn the action's `fallback_agent_type` (`general-purpose`) with `model` = `model_alias`; effort then inherits your session's setting (a `general-purpose` sub-agent spawned with `model: fable` from a max-effort session reported `claude-fable-5-1` at `max`), and a gate keeps every tool, so only the prompt and G1 (a gate run that changed files is discarded) keep it read-only.
-A session that can run one model only should `start --agent <rung>` (a roster key), so PLAN-AGENTS plans for that rung and the ledger prices every run at it; otherwise `record --agent` re-prices the run and HISTORY flags that the plan's rung was not honoured.
+A session that can run one model only should `start --agent <rung>` (a roster key), so every action names that rung, PLAN-AGENTS is told it, the ledger prices every run at it and `record --agent` is never needed; otherwise `record --agent` re-prices the run and HISTORY flags that the plan's rung was not honoured.
 Without the hook there is no owner log: `start` and every `--quote` record the owner's words unverified with a FLAG (`start` lists it under `warnings`); that is expected in a sandbox.
 
 ## Before a round
