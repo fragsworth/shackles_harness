@@ -95,7 +95,7 @@ def write_artifact(step, keys, text, mode, env):
         spec = {"round": rnd, "summary": "STUB-SPEC: add whisper to the toy", "verify": verify,
                 "verifyTimeoutSeconds": float(env.get("STUB_VERIFY_TIMEOUT", "120")),
                 "implPaths": ["../src/"], "testPaths": ["../tests/"], "nonGoals": ["NONGOAL-MARKER"], "refactor": [],
-                "testPlan": "test whisper and shout"}
+                "testPlan": "test_shout and test_whisper in tests/toy/test_text.py; the empty string and a non-string argument are Python's own str.lower behaviour and need no test"}
         if mode == "bad_artifact":
             spec["testPaths"] = ["../src/toy/"]
         write(harness, artifact, json.dumps(spec, indent=1) + "\n")
