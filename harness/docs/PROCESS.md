@@ -74,7 +74,7 @@ The gate's verdict is authoritative: a PASS with blocking findings makes them no
 
 Gate findings enter the ledger as `open`; a producer resolves each as `fixed`, `disputed` or `deferred`, and an open gate or owner finding it omits from `resolutions` counts as `fixed` with a HISTORY line.
 A disputed finding is ruled `upheld` or `withdrawn` by the next gate; upheld twice is `settled` and a further dispute is ignored with a note; withdrawn is closed and a re-raised copy (same quote) is dropped.
-`deferred` findings are carried to every later producer and to POSTMORTEM; non-blocking findings of a PASS are carried the same way.
+`deferred` findings are carried to every later producer and to POSTMORTEM; non-blocking findings of a PASS are carried the same way, and so is each `raise_with_owner` item of an accepted SUITE.json (source `flag`), which HISTORY records as `flagged for the owner: ...`.
 Mechanical findings (M*, S*, L*) are not disputable; they close when the producer's next attempt passes its checks.
 Routing findings: `U1` (UPSTREAM, attached to the target), `B1` (BLOCKED), `O1` (the owner's answer, blocking), `Q1` (a withdrawn question, the answer to assume), `W1` (a live sibling declares an overlapping path).
 

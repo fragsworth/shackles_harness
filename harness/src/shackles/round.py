@@ -673,10 +673,14 @@ class Round:
             st["tests_frozen_at"] = self.head()
             self.history(f"tests frozen at {st['tests_frozen_at'][:12]}")
         elif producer == "TESTS-TO-SUITE" and producer not in st["overrides"]:
-            self.archive_tests()
+            suite = self.read_json("suite") or {}
+            self.archive_tests(suite)
+            for item in suite.get("raise_with_owner") or []:  # the route for "flag it": HISTORY, and the carried list every later producer and POSTMORTEM see
+                self.history(f"flagged for the owner: {item}")
+                st["carried"].append({"id": "raise_with_owner", "quote": str(item), "reason": "TESTS-TO-SUITE flagged it for the owner",
+                                      "suggestion": "", "source": "flag"})
 
-    def archive_tests(self):
-        suite = self.read_json("suite") or {}
+    def archive_tests(self, suite):
         archive = self.abs(self.paths["testsArchive"])
         os.makedirs(archive, exist_ok=True)
         moved = []

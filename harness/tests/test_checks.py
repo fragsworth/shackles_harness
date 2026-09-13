@@ -55,6 +55,25 @@ def test_s2_suite_partition(tmp_path):
     assert sorted(suite["keep"] + suite["archive"]) == printed and suite["archive"] == ["../tests/toy/test_scratch.py"]
 
 
+def test_raise_with_owner_is_flagged_in_history_and_carried(tmp_path):
+    """SUITE.raise_with_owner has a route: a HISTORY line at acceptance and a carried note every later producer sees (R3-m5)."""
+    r = Repo(tmp_path)
+    r.start(extra=["--delegate"])
+    res = r.play(until="TESTS-TO-SUITE")
+    message = stub_agent.perform(res.json["prompt_file"], "pass", {"STUB_ARCHIVE": "1"})
+    suite = r.json(f"{FOLDER}/SUITE.json")
+    suite["raise_with_owner"] = ["SUITE-FLAG-MARKER: the middle ground"]
+    r.write(f"{FOLDER}/SUITE.json", json.dumps(suite, indent=1) + "\n")
+    assert r.record("TESTS-TO-SUITE", 1, message).code == 0
+    res = r.next()
+    assert res.json["step"] == "CLEANUP"
+    assert "flagged for the owner: SUITE-FLAG-MARKER: the middle ground" in r.read(f"{FOLDER}/HISTORY.md")
+    flags = [c for c in r.state()["carried"] if c["source"] == "flag"]
+    assert flags == [{"id": "raise_with_owner", "quote": "SUITE-FLAG-MARKER: the middle ground", "reason": "TESTS-TO-SUITE flagged it for the owner",
+                      "suggestion": "", "source": "flag"}]
+    assert "SUITE-FLAG-MARKER" in open(res.json["prompt_file"], encoding="utf-8").read() and r.exists(f"{FOLDER}/tests-archive/test_scratch.py")
+
+
 def test_m1_stray_reverted_and_in_scope_kept(tmp_path):
     r = Repo(tmp_path)
     r.start()
