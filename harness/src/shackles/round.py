@@ -1191,26 +1191,32 @@ class Round:
             self.flag(f"{command}: quote recorded unverified ({'no owner log' if verified is None else 'not in the log'})", who="driver")
         self.history(f"RESUME {command} quote: {quote}")
         kind = cp.get("kind")
-        if command == "override":
-            self.override(steps or [])
-            if st["status"] == "checkpoint" and cp.get("step") in st["overrides"]:
-                self.resume()  # the checkpoint's own step is skipped; any other override is followed by approve
-            elif st["status"] == "checkpoint":
-                self.notes.append(f"overrides recorded; the checkpoint at {cp.get('step')} stands: approve to resume")
-        elif command == "abandon":
-            self.abandon(reason or quote, push)
-            return self.done_payload(False), 0
-        elif command == "answer":
-            self.answer(kind, cp.get("step"), text or quote)
-        elif command in ("approve", "delegate"):
-            if command == "delegate":
-                st["approval"] = dict(st.get("approval") or {}, mode="delegated", through=through, words=quote, at=procs.now(), source="driver")
-            self.approve(kind, cp.get("step"), quote)
+        try:
+            if command == "override":
+                self.override(steps or [])
+                if st["status"] == "checkpoint" and cp.get("step") in st["overrides"]:
+                    self.resume()  # the checkpoint's own step is skipped; any other override is followed by approve
+                elif st["status"] == "checkpoint":
+                    self.notes.append(f"overrides recorded; the checkpoint at {cp.get('step')} stands: approve to resume")
+            elif command == "abandon":
+                self.abandon(reason or quote, push)
+                return self.done_payload(False), 0
+            elif command == "answer":
+                self.answer(kind, cp.get("step"), text or quote)
+            elif command in ("approve", "delegate"):
+                if command == "delegate":
+                    st["approval"] = dict(st.get("approval") or {}, mode="delegated", through=through, words=quote, at=procs.now(), source="driver")
+                self.approve(kind, cp.get("step"), quote)
+        except RunnerError:  # a refusal leaves no trace: the quote line and the RESUME entry are undone, nothing is saved or committed
+            keep = [self.repo_rel(self.paths[k]) for k in ("history", "ownerLog")]
+            checks.revert(self.root, [(xy, p) for xy, p in checks.dirty(self.root) if p in keep])
+            raise
         self.save()
         self.commit(f"{command} at {kind or 'active'}", push)
         if st["status"] == "checkpoint":
             return self.checkpoint_payload(), 10
-        return {"kind": "resumed", "round": self.id, "command": command, "status": st["status"], "step": st["step"], "spend": self.spend()}, 0
+        return {"kind": "resumed", "round": self.id, "command": command, "status": st["status"], "step": st["step"], "spend": self.spend(),
+                "warnings": self.notes}, 0
 
     def resume(self):
         self.state["status"], self.state["checkpoint"] = "active", None

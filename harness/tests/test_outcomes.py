@@ -301,6 +301,29 @@ def test_override_of_the_pending_step_discards_its_unrecorded_work(tmp_path):
     assert not d.exists(f"{FOLDER}/FINDINGS/CLEANUP-1.mechanical.json") and "M1" not in history(d), "nothing was checked because nothing was kept"
 
 
+def test_a_refused_owner_command_leaves_no_trace(tmp_path):
+    """A refusal raised after the quote was appended undoes the OWNER.log line and the RESUME entry: the pending attempt's record sees no M1
+    on the runner's own files (R8b) and the next `next` counts no infrastructure error (R8a) (R5-M2); a resumed payload carries warnings (R5-m7)."""
+    r = Repo(tmp_path)
+    r.start()
+    a = r.next().json
+    message = stub_agent.perform(a["prompt_file"], "pass", {})
+    res = r.run("override", "--steps", "LANDING", "--quote", "skip landing")
+    assert res.code == 2 and "cannot be overridden" in res.json["error"]
+    assert r.dirty().splitlines() == [f"?? {FOLDER}/AGENTS-PLAN.json"] and "RESUME" not in history(r), "only the agent's own work is dirty"
+    rec = r.record("PLAN-AGENTS", 1, message)
+    assert rec.code == 0 and rec.json["next_step"] == "PLAN-AGENTS-GATE" and r.state()["failures"] == {} and "M1" not in history(r)
+    res = r.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip it")
+    assert res.code == 2 and "its gate PLAN-AGENTS-GATE is pending" in res.json["error"] and r.dirty() == ""
+    res = r.next()
+    assert res.code == 0 and res.json["step"] == "PLAN-TO-SPEC" and r.state()["infra_errors"] == {} and "dirty tree reset" not in history(r)
+    res = r.run("override", "--steps", "POSTMORTEM", "--quote", "skip the postmortem")
+    assert res.code == 0 and res.json["kind"] == "resumed" and res.json["warnings"] == ["override: quote recorded unverified (no owner log)"]
+    slice_text = r.read(f"{FOLDER}/OWNER.log")
+    assert "skip the postmortem" in slice_text and "skip landing" not in slice_text and "skip it" not in slice_text
+    assert history(r).count("RESUME") == 1
+
+
 def test_hard_stop_raised_once(tmp_path):
     r = Repo(tmp_path, config={"hardStopBudgetMultiple": 1})
     r.start(extra=["--budget", "1"])
