@@ -566,7 +566,9 @@ class Round:
             gitops.git(self.root, "checkout", "-q", "--", *scope, check=False)
             gitops.git(self.root, "clean", "-fdq", "--", *scope, check=False)
             st["infra_errors"][st["step"]] = st["infra_errors"].get(st["step"], 0) + 1
-            notes.append(f"dirty tree reset under {', '.join(scope)} ({len(dirty)} paths): infrastructure error at {st['step']}")
+            listed = [p for _, p in dirty]
+            shown = ", ".join(listed[:20]) + (f" and {len(listed) - 20} more" if len(listed) > 20 else "")
+            notes.append(f"dirty tree reset under {', '.join(scope)}: {shown} (infrastructure error at {st['step']})")
         for note in notes:
             self.history(note)
 
@@ -601,12 +603,28 @@ class Round:
                     return name
                 self.skip_gate(name)
             elif s.kind in ("producer", "code"):
+                if name == "SPEC-TO-IMPLEMENTATION" and self.hand_merged():
+                    continue
                 if name not in st["overrides"]:
                     return name
                 self.skip_producer(name)
             elif s.kind == "landing":
                 self.landing_step(push)
         return st["step"]
+
+    def hand_merged(self):
+        """A merge attempt the owner concluded by hand: the target is already in HEAD, so the round returns to LANDING."""
+        st = self.state
+        mp = st.get("merge_pending")
+        if not mp or self.merging() or not gitops.is_ancestor(self.root, mp["target_sha"], "HEAD"):
+            return False
+        for e in st["findings_ledger"].values():
+            if e.get("step") == "SPEC-TO-IMPLEMENTATION" and e.get("source") == "landing" and e.get("status") in OPEN:
+                e["status"] = "fixed"
+        st["merge_pending"], st["attempt_pending"] = None, None
+        st["step"], st["resume_step"] = st.get("resume_step") or "LANDING", None
+        self.history(f"{mp['target']} ({mp['target_sha'][:12]}) is already merged into HEAD, a hand merge: back to {st['step']}")
+        return True
 
     def skip_gate(self, name):
         st = self.state
@@ -884,8 +902,14 @@ class Round:
             if merge:
                 gitops.abort_merge(self.root)
                 st["merge_pending"] = None
+            reverted = []
+            if st.get("tests_frozen_at") and step != "SPEC-TO-TESTS":
+                reverted += checks.m2_frozen(self.cfg, self.root, self.spec().get("testPaths") or [], snapshot)[1]
             allowed = self.step_context(step, attempt)["write_paths"]
-            checks.m1_strays(self.cfg, self.root, self.paths, allowed, snapshot, exempt=specguard.spec_files(self.root))
+            reverted += checks.m1_strays(self.cfg, self.root, self.paths, allowed, [(xy, p) for xy, p in snapshot if p not in reverted],
+                                         exempt=specguard.spec_files(self.root))[1]
+            if reverted:
+                self.history(f"{step} attempt {attempt}: {status}; out-of-scope changes reverted: {', '.join(reverted)}")
             gitops.git(self.root, "add", "-A")
             if status == "UPSTREAM":
                 return self.upstream(step, attempt, obj)
@@ -909,6 +933,7 @@ class Round:
             self.commit_work(step, attempt, merge)
             if merge:
                 st["merge_pending"] = None
+                st["step_starts"][step] = merge_tree  # the gate's diff starts at the automerge tree: the sibling's changes never appear in it
                 self.history(f"{step} attempt {attempt}: merge commit made; later attempts are normal")
         artifact_errors = self.s1(step, spec)
         if artifact_errors:
@@ -1076,6 +1101,12 @@ class Round:
             st["carried"].append({"id": "Q1", "quote": q["question"], "reason": needs.get("reason", ""), "suggestion": "assume: " + needs.get("reason", ""), "source": "gate"})
             procs.append_text(self.abs(self.paths["defined"]), f"- {step}-{attempt} withdrew the producer's question; assume: {needs.get('reason', '')} (via runner)\n")
             st["pending_question"] = None
+        if st.get("pending_question") and needs.get("status") not in ("upheld", "withdrawn"):
+            q = st["pending_question"]
+            procs.append_text(self.abs(self.paths["undefined"]), f"- {producer} assumed: {q.get('assumption') or '(none stated)'} "
+                              f"(runner: {step} attempt {attempt} gave no ruling on the question: {q['question']})\n")
+            self.flag(f"{step} attempt {attempt}: no ruling on the producer's question; the assumption stands")
+            st["pending_question"] = None
         if obj["verdict"] == "PASS":
             for f in obj.get("findings") or []:
                 st["carried"].append({"id": f["id"], "quote": f["quote"], "reason": f["reason"], "suggestion": f.get("suggestion", ""), "source": "gate"})
@@ -1108,6 +1139,8 @@ class Round:
         kind = cp.get("kind")
         if command == "override":
             self.override(steps or [])
+            if st["status"] == "checkpoint" and cp.get("step") in st["overrides"]:
+                self.resume()  # the checkpoint's own step is skipped; any other override is followed by approve
         elif command == "abandon":
             self.abandon(reason or quote, push)
             return self.done_payload(False), 0
@@ -1186,7 +1219,8 @@ class Round:
         for name in steps:
             if not pipeline.is_overridable(name):
                 raise RunnerError(f"{name} cannot be overridden", 2)
-            if name in st["step_commits"] or pipeline.index(name) < current:
+            accepted = (pipeline.gate_of(name) or name) in st["step_commits"]  # a producer is accepted by its gate, not by its clean commit
+            if accepted or pipeline.index(name) < current:
                 raise RunnerError(f"{name} is already accepted", 2)
             if name not in st["overrides"]:
                 st["overrides"].append(name)

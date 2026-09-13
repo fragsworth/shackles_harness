@@ -83,15 +83,15 @@ Every checkpoint message carries the spend versus the quote, the counts of defin
 `approve` continues; at `failure-limit` it resets that step's failures, at `spec-edit` it accepts the baseline on the branch, at `upstream-plan` it needs an edited PLAN.json, at `question` or `blocked` it means "proceed on your stated assumption".
 `delegate` is approve plus delegation; delegation skips only `review` checkpoints, and `--through STEP` skips those at or before STEP.
 `answer --text T` turns the text into finding `O1` for the producer of the checkpoint, which runs again with it.
-`override --steps A,B` skips overridable steps not yet accepted, at any time; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
-NEEDS-OWNER with the gate disabled and the round delegated proceeds on the stated assumption and appends it to `UNDEFINED_JUDGMENT_CALLS.md`.
+`override --steps A,B` skips overridable steps not yet accepted, at any time; at a checkpoint it resumes the round when the checkpoint's own step is now overridden, otherwise the checkpoint stands and `approve` follows; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
+NEEDS-OWNER with the gate disabled and the round delegated proceeds on the stated assumption and appends it to `UNDEFINED_JUDGMENT_CALLS.md`; so does a gate verdict that neither upholds nor withdraws the question.
 
 ## Caps and stops
 
 `maxFailuresBeforeStop` counts FAILs per producer step (gate or mechanical) and raises `failure-limit`.
 `maxRoundAttempts` caps `round_retries`, the count of re-entries (UPSTREAM, out-of-band plan or spec edits, landing L1 and L2); one more raises `round-limit` once.
 `hardStopBudgetMultiple` times the quote is the hard stop on the total spend, raised once as `hard-stop` before the next render.
-An out-of-band edit of PLAN.json returns the round to CHAT-TO-PLAN-GATE and clears the approval; an edit of SPEC.json or SPEC.md after acceptance returns it to SPEC-TO-TESTS.
+A committed out-of-band edit of PLAN.json returns the round to CHAT-TO-PLAN-GATE and clears the approval; a committed edit of SPEC.json or SPEC.md after acceptance returns it to SPEC-TO-TESTS; an uncommitted one is reset with the dirty tree (HISTORY names the paths) or refused as unrecorded work.
 
 ## Mechanical checks
 
@@ -105,7 +105,7 @@ E1: a change to a spec file is never reverted; its diff goes to HISTORY, `spec_e
 G1: a gate run that changed files is discarded as an infrastructure error.
 W1 and W2 are warnings: an overlapping sibling path, and a prompt over `promptTokenWarn` tokens.
 L1: the round conflicts with the landing target; L2: verify or the suite is red on the merged tree; L3: conflicted files were left unresolved.
-Checks run at `record` on the uncommitted diff of the attempt; strays are reverted before the commit, so the committed tree is always within scope.
+Checks run at `record` on the uncommitted diff of the attempt; strays are reverted before the commit, so the committed tree is always within scope; on UPSTREAM and BLOCKED, M2 and M1 revert the same way with one HISTORY line naming the paths.
 
 ## Costs
 
@@ -125,9 +125,9 @@ Rounds start from `origin/<mainBranch>` in a worktree at `<worktreeDir>/round-NN
 LANDING's check phase fetches, computes `git merge-tree --write-tree` against the target and merges cleanly or raises `L1`, then runs verify and the suite (`L2`); it never pushes, tags or charges.
 The land phase pushes `HEAD:refs/heads/<mainBranch>` in a loop of `pushAttempts`, re-running the check phase after a rejection, then books the living charge once, tags `round/NNNN-landed` and sets `landed_at`.
 On `L1` the round re-enters SPEC-TO-IMPLEMENTATION as a merge attempt: the prompt lists the conflicted files, the merge is established in the worktree after the prompt commit, M1 and M2 see only what differs from the automerge tree (the sibling's changes never count), L3 rejects unresolved files, and the commit has two parents; acceptance returns to LANDING where the target is already contained.
-A hand merge by the owner in the worktree lands without any command; `L2` re-enters the same way without a pending merge.
+A hand merge by the owner in the worktree lands without any command, before or after L1 has raised the merge attempt (`next` sees the target already in HEAD and returns to LANDING); `L2` re-enters the same way without a pending merge.
 A merge attempt ends in the merge commit or not at all: on L3, an invalid result, M0, UPSTREAM or BLOCKED the runner aborts the merge, commits the record as usual, and the next attempt re-establishes the merge from the conflicted state.
-The gate's `DIFF_FILE` for a code step is the diff of the producer's write paths since the step started, without the round folder.
+The gate's `DIFF_FILE` for a code step is the diff of the producer's write paths since the step started, without the round folder; after a merge commit the step starts at the automerge tree, so the sibling's changes never appear in it.
 `sync_main` after the last commit merges `origin/<mainBranch>` and pushes in a bounded loop; a conflict leaves `main_synced: false` and the tail arrives with the next landing.
 Invariants: one round per id, nothing created before the claim wins, one worktree per round, nothing touches main before LANDING, one runner per round (the fence), main only fast-forwards, no auto-resolved conflict, one living entry per landed round, `check` writes nothing shared, agents get no push credential, crash recovery by rerun.
 Landing conflicts converge because the merge attempt is measured against the automerge tree, not against the step start.

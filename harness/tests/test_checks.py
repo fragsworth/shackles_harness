@@ -71,6 +71,20 @@ def test_m2_frozen_test_reverted(tmp_path):
     assert "whisper" in r.read("src/toy/text.py"), "the in-scope work is kept"
 
 
+def test_upstream_reverts_out_of_scope_changes_with_a_record(tmp_path):
+    r = Repo(tmp_path)
+    r.start()
+    res = r.play(until="SPEC-TO-IMPLEMENTATION", auto_review=True)
+    before = r.read("tests/toy/test_text.py")
+    stub_agent.perform(res.json["prompt_file"], "touch_tests", {})
+    stub_agent.write(r.root + "/harness", "../stray.txt", "STUB-STRAY\n")
+    rec = r.record("SPEC-TO-IMPLEMENTATION", 1, {"status": "UPSTREAM", "target": "SPEC-TO-TESTS", "notes": "the tests are wrong"})
+    assert rec.code == 0 and r.state()["step"] == "SPEC-TO-TESTS"
+    assert r.read("tests/toy/test_text.py") == before and not r.exists("stray.txt") and r.dirty() == ""
+    assert "SPEC-TO-IMPLEMENTATION attempt 1: UPSTREAM; out-of-scope changes reverted: tests/toy/test_text.py, stray.txt" in r.read(f"{FOLDER}/HISTORY.md")
+    assert "whisper" in r.read("src/toy/text.py"), "the in-scope work is kept"
+
+
 def test_m3_verify_red_and_timeout(tmp_path):
     r = Repo(tmp_path)
     r.start()

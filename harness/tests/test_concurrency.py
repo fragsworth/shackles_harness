@@ -258,16 +258,17 @@ def test_reject_all_on_main_leaves_the_round_at_landing(tmp_path):
 
 MORE_TEST = ("import os, sys, unittest\nsys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src'))\n"
              "from toy import text\n\n\nclass MoreTest(unittest.TestCase):\n    def test_shout_again(self):\n        self.assertEqual(text.shout('ab'), 'AB')\n")
-SIBLING_FILES = {"harness/docs/SIBLING.md": "# a document the sibling added\n", "tests/toy/test_more.py": MORE_TEST}
+SIBLING_FILES = {"harness/docs/SIBLING.md": "# a document the sibling added\n", "tests/toy/test_more.py": MORE_TEST,
+                 "src/toy/extra.py": "EXTRA = 1\n"}
 
 
 def conflicting_sibling(r):
-    """A conflict in src/toy/text.py plus two clean additions outside implPaths: one under the frozen tests, one under docs."""
+    """A conflict in src/toy/text.py plus three clean additions: under the frozen tests, under docs, and under implPaths."""
     return sibling_pushes(r, "src/toy/text.py", "def shout(text):\n    return str(text).upper()\n", extra=SIBLING_FILES)
 
 
 def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
-    r = with_origin(tmp_path, config={"maxFailuresBeforeStop": 6})
+    r = with_origin(tmp_path, config={"maxFailuresBeforeStop": 6}, gates={"SPEC-TO-IMPLEMENTATION-GATE": 1})
     res, v = start_wt(r)
     to_landing(v)
     conflicting_sibling(r)
@@ -320,6 +321,28 @@ def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
     assert "whisper" in text and "str(text)" in text
     assert all(v.read(p) == content for p, content in SIBLING_FILES.items()), "the sibling's additions land intact"
     assert v.state()["failures"]["SPEC-TO-IMPLEMENTATION"] == 3, "L1, L3 and M1; nothing spurious"
+    assert v.state()["attempts"]["SPEC-TO-IMPLEMENTATION-GATE"] == 2
+    diff = v.read(FOLDER + "/PROMPTS/SPEC-TO-IMPLEMENTATION-GATE-2.diff")
+    assert "<<<<<<<" in diff and "extra.py" not in diff, "after the merge commit the gate's diff starts at the automerge tree: the resolution, not the sibling's work"
+
+
+def test_hand_merge_after_l1_returns_to_landing(tmp_path):
+    r = with_origin(tmp_path)
+    res, v = start_wt(r)
+    to_landing(v)
+    conflicting_sibling(r)
+    res = v.next()
+    assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and res.json["attempt"] == 2 and gitops.ref_exists(v.root, "MERGE_HEAD")
+    stub_agent.resolve_markers(v.root + "/harness", "../src/toy/text.py")
+    v.git("add", "-A")
+    v.git("commit", "-q", "-m", "hand merge by the owner")
+    res = v.play()
+    assert res.json["kind"] == "done", res
+    st = v.state()
+    assert st["landed_at"] and st["merge_pending"] is None and st["attempts"]["SPEC-TO-IMPLEMENTATION"] == 1, "no phantom merge attempt"
+    assert "a hand merge: back to LANDING" in v.read(FOLDER + "/HISTORY.md")
+    assert all(e["status"] == "fixed" for e in st["findings_ledger"].values() if e.get("source") == "landing")
+    assert r.origin.sha("main") == v.head() and "str(text)" in v.read("src/toy/text.py") and "whisper" in v.read("src/toy/text.py")
 
 
 def test_hand_merge_lands_without_a_command(tmp_path):

@@ -25,6 +25,7 @@ Never do a gate's job, never edit an artifact or a result, never commit or push;
 Exit 10 from `next` or `record`: relay `message` to the owner verbatim and stop; when the owner speaks, run the matching command with their exact words in `--quote` (the commands are listed in the message).
 `push rejected` from `record` means another runner owns the round: stop and report.
 A crash mid-command is resumed by rerunning `next`; unrecorded work of a pending attempt is refused until you `record` it or run `next --discard`, so always `record` before another `next`.
+An owner's out-of-band edit of PLAN.json, SPEC.json or SPEC.md counts only once committed in the worktree; `next` resets an uncommitted one with the dirty tree.
 
 ## After
 

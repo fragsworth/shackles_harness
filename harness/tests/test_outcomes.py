@@ -110,6 +110,13 @@ def test_needs_owner_with_the_gate_enabled(tmp_path):
     assert "withdrew the producer's question" in r2.read(f"{FOLDER}/DEFINED_JUDGMENT_CALLS.md")
     gate_prompt = r2.read(f"{FOLDER}/PROMPTS/PLAN-AGENTS-GATE-1.txt")
     assert stub_agent.QUESTION in gate_prompt and stub_agent.ASSUMPTION in gate_prompt
+    r3 = Repo(tmp_path / "c", gates=ALL_GATES)
+    r3.start()
+    res = r3.play(until="PLAN-TO-SPEC-GATE", modes={"PLAN-AGENTS:1": "needs_owner", "PLAN-AGENTS-GATE:1": "pass"})
+    assert res.json["step"] == "PLAN-TO-SPEC-GATE" and r3.state()["pending_question"] is None, "a PASS without a ruling settles the question"
+    assert "no ruling on the producer's question; the assumption stands" in history(r3)
+    assert "PLAN-AGENTS assumed: " + stub_agent.ASSUMPTION in r3.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md")
+    assert stub_agent.QUESTION not in open(res.json["prompt_file"], encoding="utf-8").read(), "a later gate is not asked to rule on it"
 
 
 def test_needs_owner_with_the_gate_disabled(tmp_path):
@@ -188,6 +195,17 @@ def test_failure_limit_and_approve_resets(tmp_path):
     assert r.state()["failures"]["PLAN-AGENTS"] == 0 and r.state()["status"] == "active"
     res = r.play(until="PLAN-TO-SPEC", modes={"PLAN-AGENTS-GATE:3": "pass"})
     assert res.json["step"] == "PLAN-TO-SPEC"
+    r2 = Repo(tmp_path / "b", gates=ALL_GATES, config={"maxFailuresBeforeStop": 2})
+    r2.start()
+    res = r2.play(modes={"PLAN-AGENTS-GATE": "fail"})
+    assert res.json["checkpoint"]["kind"] == "failure-limit"
+    res = r2.run("override", "--steps", "PLAN-AGENTS-GATE", "--quote", "skip the gate")
+    assert res.code == 10 and res.json["kind"] == "checkpoint", "overriding another step keeps the checkpoint; approve follows"
+    res = r2.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip the step")
+    assert res.code == 0 and res.json["kind"] == "resumed" and res.json["status"] == "active", "overriding the checkpoint's own step resumes"
+    res = r2.play(until="PLAN-TO-SPEC")
+    assert res.json["step"] == "PLAN-TO-SPEC" and r2.state()["attempts"]["PLAN-AGENTS"] == 2, "no third attempt ran"
+    assert r2.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-GATE-3.json")["source"] == "override"
 
 
 def test_hard_stop_raised_once(tmp_path):
@@ -261,6 +279,8 @@ def test_dirty_tree_recovery_is_scoped_and_counted(tmp_path):
     assert not r.exists("harness/junk.txt") and not r.exists("src/toy/junk.py") and r.exists("outside.txt")
     assert "edited" not in r.read("harness/AGENTS.md")
     assert r.state()["infra_errors"]["PLAN-TO-SPEC"] >= 1
+    note = [l for l in history(r).splitlines() if l.startswith("## ") and "dirty tree reset" in l][-1]
+    assert "harness/AGENTS.md" in note and "harness/junk.txt" in note and "src/toy/junk.py" in note, "the reset names what it reverted"
 
 
 def test_pending_work_refused_without_discard(tmp_path):
