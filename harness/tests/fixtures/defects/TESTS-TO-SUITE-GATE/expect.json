@@ -2,5 +2,5 @@
   "verdict": "FAIL",
   "quote_contains": "test_text.py",
   "files": {"archives/rounds/0001/SUITE.json": "SUITE.json"},
-  "planted": "the only regression test of the new behaviour is archived and the empty scratch test is kept"
+  "planted": "the only regression test of the new behaviour is archived and the redundant scratch test is kept"
 }

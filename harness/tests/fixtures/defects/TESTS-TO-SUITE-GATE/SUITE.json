@@ -2,5 +2,5 @@
   "round": 1,
   "keep": ["../tests/toy/test_scratch.py"],
   "archive": ["../tests/toy/test_text.py"],
-  "notes": "PLANTED-DEFECT: archive the regression test of whisper and shout, keep the empty scratch test"
+  "notes": "PLANTED-DEFECT: archive the regression test of whisper and shout, keep the redundant scratch test"
 }
