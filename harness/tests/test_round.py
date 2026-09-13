@@ -238,9 +238,15 @@ def test_delegation_from_the_plan(tmp_path):
         assert "review checkpoint after CLEANUP skipped (delegated)" in p.read("harness/archives/rounds/0001/HISTORY.md")
     q = repo(tmp_path / "step")
     assert q.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "NOPE"})).code == 2
-    assert q.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "PLAN-TO-SPEC-GATE", "words": "delegate through PLAN-TO-SPEC-GATE"})).code == 0
-    seen, res = drive(q, env={"STUB_ARCHIVE": "1"})
-    assert seen == [("review", "CLEANUP")]
+    for through in ("PLAN-TO-SPEC-GATE", "PLAN-TO-SPEC"):  # the gate's name or the producer's, the natural thing for an owner to say (R3-M1)
+        q = repo(tmp_path / through)
+        assert q.start(plan=dict(PLAN, approval={"mode": "delegated", "through": through, "words": f"delegate through {through}"})).code == 0
+        seen, res = drive(q, env={"STUB_ARCHIVE": "1"})
+        assert seen == [("review", "CLEANUP")], through
+    p = repo(tmp_path / "earlier")
+    assert p.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "PLAN-AGENTS", "words": "delegate through PLAN-AGENTS"})).code == 0
+    seen, res = drive(p, env={"STUB_ARCHIVE": "1"})
+    assert seen == [("review", "PLAN-TO-SPEC-GATE"), ("review", "CLEANUP")], "a through before the spec skips no review"
 
 
 def test_delegate_at_a_checkpoint(tmp_path):
