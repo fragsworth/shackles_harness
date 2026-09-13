@@ -201,11 +201,29 @@ def test_failure_limit_and_approve_resets(tmp_path):
     assert res.json["checkpoint"]["kind"] == "failure-limit"
     res = r2.run("override", "--steps", "PLAN-AGENTS-GATE", "--quote", "skip the gate")
     assert res.code == 10 and res.json["kind"] == "checkpoint", "overriding another step keeps the checkpoint; approve follows"
+    assert "overrides recorded; the checkpoint at PLAN-AGENTS stands: approve to resume" in res.json["warnings"]
     res = r2.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip the step")
     assert res.code == 0 and res.json["kind"] == "resumed" and res.json["status"] == "active", "overriding the checkpoint's own step resumes"
     res = r2.play(until="PLAN-TO-SPEC")
     assert res.json["step"] == "PLAN-TO-SPEC" and r2.state()["attempts"]["PLAN-AGENTS"] == 2, "no third attempt ran"
     assert r2.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-GATE-3.json")["source"] == "override"
+
+
+def test_override_at_a_review_checkpoint_stands_until_approve(tmp_path):
+    """A review's own step is already accepted; another override is recorded, the checkpoint reprinted with a note, and approve resumes (R3-m6)."""
+    r = Repo(tmp_path)
+    r.start()
+    res = r.play()
+    assert res.json["checkpoint"]["kind"] == "review" and res.json["checkpoint"]["step"] == "PLAN-TO-SPEC-GATE"
+    res = r.run("override", "--steps", "PLAN-TO-SPEC-GATE", "--quote", "skip the spec gate")
+    assert res.code == 2 and "already accepted" in res.json["error"]
+    res = r.run("override", "--steps", "SPEC-TO-TESTS-GATE", "--quote", "skip the tests gate")
+    assert res.code == 10 and res.json["kind"] == "checkpoint" and r.state()["status"] == "checkpoint"
+    assert "overrides recorded; the checkpoint at PLAN-TO-SPEC-GATE stands: approve to resume" in res.json["warnings"]
+    res = r.run("approve", "--quote", "skip the tests gate")
+    assert res.code == 0 and res.json["kind"] == "resumed"
+    res = r.play(until="SPEC-TO-IMPLEMENTATION")
+    assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and r.json(f"{FOLDER}/FINDINGS/SPEC-TO-TESTS-GATE-1.json")["source"] == "override"
 
 
 def test_hard_stop_raised_once(tmp_path):

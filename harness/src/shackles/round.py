@@ -429,7 +429,7 @@ class Round:
         return {"kind": "checkpoint", "round": self.id, "checkpoint": {k: cp.get(k) for k in ("kind", "step", "at", "question", "artifact")},
                 "message": cp["message"], "resume": self.resume_commands(cp["kind"]), "spend": self.spend(),
                 "judgment_calls": self.judgment_counts(), "undefined_tail": self.undefined_tail(),
-                "undefined_file": self.abs(self.paths["undefined"])}
+                "undefined_file": self.abs(self.paths["undefined"]), "warnings": self.notes}
 
     def done_payload(self, synced):
         st = self.state
@@ -1167,6 +1167,8 @@ class Round:
             self.override(steps or [])
             if st["status"] == "checkpoint" and cp.get("step") in st["overrides"]:
                 self.resume()  # the checkpoint's own step is skipped; any other override is followed by approve
+            elif st["status"] == "checkpoint":
+                self.notes.append(f"overrides recorded; the checkpoint at {cp.get('step')} stands: approve to resume")
         elif command == "abandon":
             self.abandon(reason or quote, push)
             return self.done_payload(False), 0
