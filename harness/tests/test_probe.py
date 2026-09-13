@@ -59,12 +59,17 @@ def test_probe_runs_the_stub_headlessly_for_a_producer(tmp_path):
 def test_sandbox_builds_and_a_stub_round_finishes_there(tmp_path):
     r = Repo(tmp_path)
     r.append("harness/docs/TODO.md", "- TODO-MARKER: an item the sandbox planner must see\n")
+    r.write(".claude/settings.json", '{"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "py -3.13 harness/src/owner_log_hook.py"}]}]}}\n')
     target = str(tmp_path / "sb")
     res = r.run("sandbox", "--dir", target)
     assert res.code == 0, res
     repo = res.json["repo"]
     assert os.path.isdir(res.json["origin"]) and os.path.exists(os.path.join(repo, "src", "toy", "text.py"))
     assert "TODO-MARKER" in procs.read_text(os.path.join(repo, "harness", "docs", "TODO.md")), "the copied carry-forward files survive the toy"
+    assert "def shout" in res.json["toy"]["src/toy/text.py"] and "tests/toy/test_text.py" in res.json["toy"], "the JSON says what the toy already holds"
+    assert os.path.exists(os.path.join(repo, ".claude", "settings.json")), "the owner-log hook is copied with the agent definitions"
+    from shackles import gitops
+    assert gitops.git(repo, "config", "--get", "core.longpaths") == "true" and gitops.git(res.json["origin"], "config", "--get", "core.longpaths") == "true"
     sb = Repo.__new__(Repo)
     sb.tmp, sb.root, sb.explicit_root = target, repo, repo
     sb.scratch = os.path.join(target, "scratch")

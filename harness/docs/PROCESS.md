@@ -160,4 +160,5 @@ The carry-forward files mirror POSTMORTEM's TODOs and CLARIFICATIONS; the runner
 
 Subprocesses are argv lists, never a shell; child Pythons get `PYTHONUTF8=1`; timeouts kill the process tree with `taskkill /T /F`.
 Files are written atomically (temp then replace, retried on `PermissionError`); `shutil.rmtree` clears read-only bits; paths are compared with `os.path.normcase`.
+Round worktrees carry long paths, so `doctor` warns when `core.longpaths` is not true and `sandbox` sets it on the repositories it creates.
 The hook command is `py -3.13 harness/src/owner_log_hook.py`; `claude.exe` is found under `%APPDATA%\Claude\claude-code\` when it is not on PATH.

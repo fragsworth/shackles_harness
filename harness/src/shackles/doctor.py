@@ -126,6 +126,9 @@ def run(root, probe_cli=False):
         info["runner_skew"] = not procs.same_path(running, expected)
         if info["runner_skew"]:
             warnings.append(f"runner skew: running {running}, the repository's runner is {expected}")
+        info["longpaths"] = gitops.git(root, "config", "--get", "core.longpaths", check=False) == "true"
+        if procs.WINDOWS and not info["longpaths"]:
+            warnings.append("git config core.longpaths is not true; round worktrees carry long paths (git config core.longpaths true)")
     else:
         warnings.append("not a git repository")
     try:

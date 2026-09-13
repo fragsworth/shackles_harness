@@ -72,8 +72,9 @@ def add_parsers(sub):
     pr.add_argument("--dir", help="where to build the temp repo (default: a temp dir)")
     pr.add_argument("--changed", action="store_true", help="probe only the steps whose prose the baseline reports changed")
     pr.add_argument("--check", metavar="RESULT_FILE", help="score a result file against the probe's expectation")
-    sb = sub.add_parser("sandbox", help="a temp clone with a local bare origin, the harness and the toy project")
-    sb.add_argument("--dir", required=True)
+    sb = sub.add_parser("sandbox", help="a temp clone with a local bare origin, the harness and the toy project "
+                                        "(src/toy/text.py already holds shout(text), with one test; the JSON prints their content)")
+    sb.add_argument("--dir", required=True, help="a folder outside any repository; DIR/repo and DIR/origin.git are created")
 
 
 def cmd_doctor(args, root):

@@ -53,6 +53,12 @@ def test_doctor_config_and_render_on_the_fixture(tmp_path):
     assert proc.returncode == 0 and "STEP: CLEANUP" in proc.stdout
     proc = run_py(r.root, "spec", "status")
     assert proc.returncode == 0 and json.loads(proc.stdout.strip())["clean"]
+    assert report["info"]["longpaths"] is True and not any("longpaths" in w for w in report["warnings"])
+    if os.name == "nt":
+        r.git("config", "core.longpaths", "false")
+        report = json.loads(run_py(r.root, "doctor").stdout.strip())
+        assert report["info"]["longpaths"] is False and any("core.longpaths" in w for w in report["warnings"])
+        r.git("config", "core.longpaths", "true")
 
 
 def test_runner_skew_warning(tmp_path):

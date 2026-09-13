@@ -179,6 +179,10 @@ def sandbox(root, target):
             shutil.copyfile(src, os.path.join(archives, name))
     if os.path.isdir(os.path.join(root, ".claude", "agents")):
         shutil.copytree(os.path.join(root, ".claude", "agents"), os.path.join(repo, ".claude", "agents"))
+    settings = os.path.join(root, ".claude", "settings.json")
+    if os.path.exists(settings):  # the owner-log hook, live when a session is started in the sandbox repo
+        os.makedirs(os.path.join(repo, ".claude"), exist_ok=True)
+        shutil.copyfile(settings, os.path.join(repo, ".claude", "settings.json"))
     fixtures.write_toy(repo)
     project_path = os.path.join(repo, "harness", "project.yaml")
     data = configmod.load_yaml(project_path)
@@ -188,11 +192,20 @@ def sandbox(root, target):
     procs.write_text(project_path, yaml.safe_dump(data, sort_keys=False))
     specguard.accept(repo, "sandbox: living paths point at the toy project")
     gitops.git(repo, "init", "-q", "-b", "main")
+    gitops.git(repo, "config", "core.longpaths", "true")  # round worktrees under a temp folder run past Windows' 260 characters
     gitops.git(repo, "add", "-A")
     gitops.git(repo, "commit", "-q", "-m", "sandbox base")
     origin = os.path.join(target, "origin.git")
     gitops.git(target, "init", "-q", "--bare", "-b", "main", origin)
+    gitops.git(origin, "config", "core.longpaths", "true")
     gitops.git(repo, "remote", "add", "origin", origin)
     gitops.git(repo, "push", "-q", "-u", "origin", "main")
-    return {"repo": repo, "origin": origin, "runner": os.path.join(repo, "harness", "src", "run.py"),
+    toy = {}
+    for folder in ("src", "tests"):
+        for dirpath, dirs, names in os.walk(os.path.join(repo, folder)):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for name in sorted(names):
+                path = os.path.join(dirpath, name)
+                toy[procs.posix(os.path.relpath(path, repo))] = procs.read_text(path)
+    return {"repo": repo, "origin": origin, "runner": os.path.join(repo, "harness", "src", "run.py"), "toy": toy,
             "hint": f"py -3.13 {os.path.join(repo, 'harness', 'src', 'run.py')} --root {repo} start --plan <PLAN.json> --delegate"}
