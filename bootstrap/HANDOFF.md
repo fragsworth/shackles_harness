@@ -1,0 +1,22 @@
+# Handoff: continue the bootstrap of shackles_harness
+
+Continue the bootstrap of `C:\Users\twolf\Claude\shackles_harness`. Everything so far is committed on branch `claude/bootstrap`; local `main` points at the same commit. Read `bootstrap/FINAL-PLAN.md` first, then `bootstrap/reviews/review-3.md` and `bootstrap/tests/test-B.md`. The full trail is in `bootstrap/`: six plans, two merges, the final plan, three reviews, two test reports.
+
+State: the harness is implemented and its suite passes (166 tests, about 9 minutes, `py -3.13 -m pytest` from the repo root). Two real-agent test rounds reached the end in a sandbox: gates off with the owner's word "delegate", then all gates on. Review 3's findings and the open test-B items are not fixed yet; that is the next step.
+
+Rules that still apply:
+- The files listed in `spec.yaml` are the owner's. Do not edit them unless nothing else works. If you must, make the smallest edit in its own commit with the diff in the commit body, re-accept the spec baseline in that same commit, and flag it loudly with the diff in the final report. So far exactly one such commit exists: `9a13bb2`, two one-token placeholder renames.
+- Nothing mechanical may depend on the wording of the locked prose. Reviews only clarify, simplify, or correct; no added complexity.
+- Keep your own context small: spawn one sub-agent at a time, with worktree isolation for anything that reads or writes the repo; collect its files from `.claude/worktrees/agent-*`, then remove the worktree and delete its branch. Fixers commit on their branch; fast-forward merge into `claude/bootstrap`. Sub-agents work alone (no nested spawning), except the test drivers, which spawn one sub-agent per harness action.
+- Fable 5.1 max agents: use subagent_type `fable-max` if it is listed, otherwise `general-purpose` with model `fable` (verified to give claude-fable-5-1 at max effort; check once by asking the agent to quote its model line and effort tag). Test drivers and their step agents: Opus, any effort.
+- Never push to GitHub. Real-agent tests run only in a sandbox made by `run.py sandbox --dir <temp dir>`; set `git config core.longpaths true` there. The driver reads `harness/docs/DRIVER.md` and follows it literally, spawning `general-purpose` sub-agents with model `opus` and passing the rung that ran to `record`. Report files go to `bootstrap/tests/`.
+
+Remaining steps, in order:
+1. Fixer (Fable max): fix review-3's findings plus the open test-B items, following the reviewer's verdicts; suite green; merge.
+2. Test C (Opus driver): a tiny throwaway task with the owner's word "approve" instead of "delegate", so the round pauses at review checkpoints and resumes through owner commands; include one question checkpoint answered with `answer`. Report to `bootstrap/tests/test-C.md`. Fix anything that breaks (limit five attempts).
+3. Review 4 (Fable max, read-only, drafts its own process) given test C's summary; fixer; merge.
+4. Test D (Opus driver): approval skips: `override` of a step and of a gate, and "delegate through STEP". Fix anything that breaks.
+5. Review 5 given test D's summary; fixer; merge.
+6. Test E (Opus): gate effectiveness: planted defects that gates must FAIL, then the retry path; `run.py probe --seed defect` exists for this. Fix anything that breaks; no further review after this one.
+7. Final test (Opus): fabricate a situation that forces an undefined judgment call (for example a task whose spec is silent on something that affects behavior) and check that the harness records it in UNDEFINED_JUDGMENT_CALLS.md and surfaces it at `record`, at checkpoints, in `status` and at `done`. Fix if broken.
+8. Final report to the owner, containing: the spec-edit diff (commit `9a13bb2`, plus any later one) flagged loudly; that all six planners independently proposed simulated agents for the test suite; that the plans' probe ladder (stub suite, per-step real-agent probes with planted defects, sandbox rounds) was adopted as the documented testing loop alongside the owner's end-to-end runs; that the standalone Claude CLI on this machine is not logged in, so headless mode is stub-verified only (`claude auth login` fixes it); that `.claude/settings.json` in the repo adds a prompt hook that logs the owner's chat lines to the gitignored `harness/OWNER.log`; that three generic agent definitions were added under `C:\Users\twolf\.claude\agents\`; and every finding the fixers skipped, with the reason.
