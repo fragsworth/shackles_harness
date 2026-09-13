@@ -76,9 +76,11 @@ def repo_root(path):
 
 def status_paths(root, *scope):
     """[(xy, posix path)] for every changed or untracked file, optionally limited to `scope` paths."""
-    out = git(root, "status", "--porcelain", "-z", "--untracked-files=all", "--", *scope) if scope else \
-        git(root, "status", "--porcelain", "-z", "--untracked-files=all")
-    items, fields = [], [f for f in out.split("\0") if f]
+    args = ["status", "--porcelain", "-z", "--untracked-files=all"] + (["--", *scope] if scope else [])
+    proc = git_proc(root, *args)
+    if not proc.ok:
+        raise RunnerError(f"git status failed: {(proc.err or proc.out).strip()}")
+    items, fields = [], [f for f in proc.out.split("\0") if f]
     i = 0
     while i < len(fields):
         xy, path = fields[i][:2], fields[i][3:]
@@ -92,6 +94,31 @@ def status_paths(root, *scope):
 def show(root, commit, path):
     proc = git_proc(root, "show", f"{commit}:{path}")
     return procs.normalize_text(proc.out) if proc.ok else None
+
+
+def show_many(root, commit, paths):
+    """{path: normalized text or None} for every path at commit, in one git cat-file --batch call."""
+    if not paths:
+        return {}
+    env = procs.child_env(extra={"GIT_TERMINAL_PROMPT": "0"})
+    stdin = "".join(f"{commit}:{p}\n" for p in paths).encode("utf-8")
+    proc = procs.run_bytes(["git"] + IDENTITY + ["cat-file", "--batch"], cwd=root, env=env, stdin_bytes=stdin, timeout=TIMEOUT[0])
+    data, i, out = proc.out, 0, {}
+    for p in paths:
+        nl = data.find(b"\n", i)
+        if nl < 0:
+            out[p] = None
+            continue
+        header = data[i:nl].decode("utf-8", "replace")
+        i = nl + 1
+        parts = header.split()
+        if len(parts) != 3:
+            out[p] = None
+            continue
+        size = int(parts[2])
+        out[p] = procs.normalize_text(data[i:i + size].decode("utf-8", "replace"))
+        i += size + 1
+    return out
 
 
 def blob_size(root, commit, path):

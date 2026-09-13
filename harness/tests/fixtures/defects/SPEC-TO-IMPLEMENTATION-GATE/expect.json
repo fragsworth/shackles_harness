@@ -1,0 +1,6 @@
+{
+  "verdict": "FAIL",
+  "quote_contains": "yell",
+  "files": {"../src/toy/text.py": "text.py"},
+  "planted": "a yell function and a module-level cache the spec never asked for"
+}

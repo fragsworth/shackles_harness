@@ -18,7 +18,7 @@ def hermetic_git(tmp_path_factory):
     cfg = tmp_path_factory.mktemp("gitcfg") / "gitconfig"
     cfg.write_text(GITCONFIG, encoding="utf-8")
     os.environ.update({"GIT_CONFIG_GLOBAL": str(cfg), "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
-                       "PYTHONUTF8": "1"})
+                       "PYTHONUTF8": "1", "SHACKLES_CLAUDE": sys.executable})
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
         os.environ.pop(key, None)
     yield cfg

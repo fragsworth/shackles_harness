@@ -1,0 +1,6 @@
+{
+  "verdict": "FAIL",
+  "quote_contains": "shout",
+  "files": {"../tests/toy/test_text.py": "test_text.py"},
+  "planted": "the tests never exercise whisper, the component the spec adds; only shout is tested"
+}

@@ -70,6 +70,18 @@ def run(argv, cwd, env=None, timeout=None, stdin_text=None):
     return Completed(proc.returncode, out or "", err or "")
 
 
+def run_bytes(argv, cwd, env=None, stdin_bytes=None, timeout=None):
+    proc = subprocess.Popen([str(a) for a in argv], cwd=cwd, env=env, stdin=subprocess.PIPE if stdin_bytes is not None else subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=not WINDOWS)
+    try:
+        out, err = proc.communicate(stdin_bytes, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        kill_tree(proc)
+        out, err = proc.communicate()
+        return Completed(-1, out or b"", err or b"", True)
+    return Completed(proc.returncode, out or b"", err or b"")
+
+
 def normalize_text(text):
     if text.startswith("﻿"):
         text = text[1:]

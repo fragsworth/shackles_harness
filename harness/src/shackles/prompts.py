@@ -23,11 +23,17 @@ def plumbing_reader():
 
 def prose_reader(cfg, root, prose_commit=None):
     prose_dir = cfg.prose_dir()
+    cache = {}
 
     def read(name):
         rel = cfg.repo_rel(f"{prose_dir}/{name}.txt")
         if prose_commit:
-            return gitops.show(root, prose_commit, rel)
+            if not cache:
+                names = prose_names(cfg, root, prose_commit)
+                loaded = gitops.show_many(root, prose_commit, [cfg.repo_rel(f"{prose_dir}/{n}") for n in names])
+                cache.update({cfg.repo_rel(f"{prose_dir}/{n}"): loaded.get(cfg.repo_rel(f"{prose_dir}/{n}")) for n in names})
+                cache.setdefault("", None)
+            return cache.get(rel)
         path = os.path.join(root, *rel.split("/"))
         return procs.read_text(path) if os.path.exists(path) else None
     return read

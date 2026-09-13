@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3.13 harness/src/owner_log_hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}

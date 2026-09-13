@@ -1,12 +1,17 @@
 """Test fixtures: the generated minimal spec, the toy project, throwaway repositories and origins."""
+import contextlib
+import io
+import json
 import os
 import shutil
+import subprocess
 import sys
 
 import yaml
 
+from shackles import cli
 from shackles import config as configmod
-from shackles import pipeline, procs
+from shackles import gitops, pipeline, procs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -14,6 +19,9 @@ SRC = os.path.join(REPO_ROOT, "harness", "src")
 FIXTURES = os.path.join(HERE, "fixtures")
 TOY = os.path.join(FIXTURES, "toy")
 STUB = os.path.join(HERE, "stub_agent.py")
+PRESENTED_AT = "2026-01-01T00:00:00Z"
+PLAN = {"presented_at": PRESENTED_AT, "quote_usd": 100.0, "summary": "PLAN-SUMMARY-MARKER: add whisper to the toy",
+        "scope": ["whisper(text) lowercases"], "validation": ["the toy tests pass"], "non_goals": ["NONGOAL-MARKER"], "assumptions": []}
 OWNER_KEYS = ["shackles", "currency", "budget", "hardStopBudgetMultiple", "lostValuePerHour", "ownerHourlyRate",
               "costToWaitForOwner", "planCostPerWord", "specCostPerWord", "livingFileTokenCap", "livingFileCostPerToken",
               "livingFileCostPerTokenOverCap", "livingFileBaseCost", "testBaseCost", "tokenBytes", "maxRefactorOverhead",
@@ -38,6 +46,8 @@ COMMON = {
     "COMMON-GATE": "Fixture gate: PASS or FAIL. A FAIL costs {{ step.retry_cost }}.\n",
 }
 AGENTS_MD = "# harness/\n\nFixture AGENTS.md: the driver runs the runner; {{ plumbing.PROCESS-INSTRUCTIONS }} is inserted by it.\n"
+GITIGNORE = ".claude/worktrees/\nharness/OWNER.log\nharness/local.yaml\n__pycache__/\n*.pyc\n"
+_clock = [0]
 
 
 def producer_prose(name):
@@ -51,6 +61,14 @@ def gate_prose(name):
             "Not sensible? Fail.\n\n{{ plumbing.PROCESS-INSTRUCTIONS }}\n")
 
 
+def toy_verify():
+    return [sys.executable, "-m", "unittest", "discover", "-s", "../tests/toy", "-p", "test_*.py", "-t", "../tests/toy"]
+
+
+def stub_command():
+    return [sys.executable, STUB, "{prompt_file}", "{model}", "{effort}", "{budget_cap_usd}", "{result_schema}", "{tool_flags}", "{task}"]
+
+
 def fixture_project(gates=None, config=None):
     data = {k: configmod.DEFAULTS[k] for k in OWNER_KEYS}
     data = yaml.safe_load(yaml.safe_dump(data, sort_keys=False))
@@ -59,6 +77,9 @@ def fixture_project(gates=None, config=None):
     data["gates"] = {g: 0 for g in pipeline.gates()}
     for g, on in (gates or {}).items():
         data["gates"][g] = 1 if on else 0
+    data["suiteCommand"] = toy_verify()
+    data["agentCommand"] = stub_command()
+    data["lostValuePerHour"] = 0
     data.update(config or {})
     return data
 
@@ -74,12 +95,13 @@ def write_spec(root, gates=None, config=None, spec="fixture"):
         for name in os.listdir(os.path.join(REPO_ROOT, "harness", "locked_prose")):
             shutil.copyfile(os.path.join(REPO_ROOT, "harness", "locked_prose", name), os.path.join(prose_dir, name))
         shutil.copyfile(os.path.join(REPO_ROOT, "spec.yaml"), os.path.join(root, "spec.yaml"))
-        if config or gates:
-            data = configmod.load_yaml(os.path.join(h, "project.yaml"))
-            for g, on in (gates or {}).items():
-                data["gates"][g] = 1 if on else 0
-            data.update(config or {})
-            procs.write_text(os.path.join(h, "project.yaml"), yaml.safe_dump(data, sort_keys=False))
+        data = configmod.load_yaml(os.path.join(h, "project.yaml"))
+        data["livingSourcePaths"] = ["../src/", "../tests/", "docs/"]
+        data["suiteCommand"], data["agentCommand"], data["lostValuePerHour"] = toy_verify(), stub_command(), 0
+        for g, on in (gates or {}).items():
+            data["gates"][g] = 1 if on else 0
+        data.update(config or {})
+        procs.write_text(os.path.join(h, "project.yaml"), yaml.safe_dump(data, sort_keys=False))
         return
     procs.write_text(os.path.join(h, "AGENTS.md"), AGENTS_MD)
     procs.write_text(os.path.join(h, "project.yaml"), yaml.safe_dump(fixture_project(gates, config), sort_keys=False))
@@ -92,35 +114,303 @@ def write_spec(root, gates=None, config=None, spec="fixture"):
         f = pipeline.prose_file(s.name)
         if not f:
             continue
-        text = gate_prose(s.name) if s.kind == "gate" else producer_prose(s.name)
-        procs.write_text(os.path.join(prose_dir, f), text)
+        procs.write_text(os.path.join(prose_dir, f), gate_prose(s.name) if s.kind == "gate" else producer_prose(s.name))
         files.append(f"harness/locked_prose/{f}")
     procs.write_text(os.path.join(root, "spec.yaml"), "files:\n" + "".join(f"  - {f}\n" for f in sorted(files)))
 
 
 def write_toy(root):
-    """The toy project at <root>/src and <root>/tests, the target of fixture rounds."""
     for dirpath, _, names in os.walk(TOY):
         for name in names:
             src = os.path.join(dirpath, name)
-            rel = os.path.relpath(src, TOY)
-            dst = os.path.join(root, rel)
+            dst = os.path.join(root, os.path.relpath(src, TOY))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copyfile(src, dst)
+    for rel, header in (("harness/docs/TODO.md", "# TODO: carry-forward items, one section per round.\n"),
+                        ("harness/docs/CLARIFICATIONS.md", "# CLARIFICATIONS: questions for the owner, one section per round.\n")):
+        procs.write_text(os.path.join(root, *rel.split("/")), header)
 
 
 def copy_runner(root):
-    dst = os.path.join(root, "harness", "src")
-    shutil.copytree(SRC, dst, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"), dirs_exist_ok=True)
+    shutil.copytree(SRC, os.path.join(root, "harness", "src"), ignore=shutil.ignore_patterns("__pycache__", "*.pyc"), dirs_exist_ok=True)
 
 
-def local_yaml(root, agent_command=None, suite_command=None, extra=None):
-    data = {"agentCommand": agent_command or [sys.executable, STUB, "{prompt_file}", "{model}", "{effort}",
-                                               "{budget_cap_usd}", "{result_schema}", "{tool_flags}", "{task}"],
-            "suiteCommand": suite_command or toy_verify()}
-    data.update(extra or {})
-    procs.write_text(os.path.join(root, "harness", "local.yaml"), yaml.safe_dump(data, sort_keys=False))
+def local_yaml(root, extra=None):
+    procs.write_text(os.path.join(root, "harness", "local.yaml"), yaml.safe_dump(extra or {}, sort_keys=False))
 
 
-def toy_verify():
-    return [sys.executable, "-m", "unittest", "discover", "-s", "../tests/toy", "-p", "test_*.py", "-t", "../tests/toy"]
+def future_ts(minutes=None):
+    import datetime
+    _clock[0] += 1
+    delta = datetime.timedelta(minutes=minutes if minutes is not None else _clock[0])
+    return (datetime.datetime.now(datetime.timezone.utc) + delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class Result:
+    def __init__(self, code, stdout, stderr):
+        self.code, self.stdout, self.stderr = code, stdout, stderr
+        self.json = None
+        for line in reversed(stdout.strip().splitlines()):
+            try:
+                self.json = json.loads(line)
+                break
+            except ValueError:
+                continue
+
+    def __repr__(self):
+        return f"Result(code={self.code!r}, stdout={self.stdout[-1500:]!r}, stderr={self.stderr[-1500:]!r})"
+
+
+@contextlib.contextmanager
+def environ(extra):
+    saved = {k: os.environ.get(k) for k in extra}
+    os.environ.update({k: str(v) for k, v in extra.items() if v is not None})
+    for k, v in extra.items():
+        if v is None:
+            os.environ.pop(k, None)
+    try:
+        yield
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+class Repo:
+    """A throwaway repository holding the fixture spec, the toy project and a copy of the runner."""
+
+    def __init__(self, tmp, gates=None, config=None, spec="fixture", branch=None):
+        self.tmp = str(tmp)
+        self.root = os.path.join(self.tmp, "repo")
+        os.makedirs(self.root)
+        write_spec(self.root, gates, config, spec)
+        write_toy(self.root)
+        copy_runner(self.root)
+        procs.write_text(os.path.join(self.root, ".gitignore"), GITIGNORE)
+        procs.write_text(os.path.join(self.root, ".gitattributes"), "harness/archives/**/*.jsonl merge=union\n")
+        from shackles import specguard
+        specguard.accept(self.root, "fixture baseline")
+        self.git("init", "-q", "-b", "main")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "base")
+        if branch:
+            self.git("checkout", "-q", "-b", branch)
+        self.scratch = os.path.join(self.tmp, "scratch")
+        os.makedirs(self.scratch, exist_ok=True)
+        self.stub_log = os.path.join(self.tmp, "stub.log")
+        self.origin = None
+        self.explicit_root = self.root
+
+    # -- files and git -------------------------------------------------------
+    def path(self, rel):
+        return os.path.join(self.root, *rel.split("/"))
+
+    def write(self, rel, text):
+        procs.write_text(self.path(rel), text)
+
+    def append(self, rel, text):
+        procs.append_text(self.path(rel), text)
+
+    def read(self, rel):
+        return procs.read_text(self.path(rel))
+
+    def json(self, rel):
+        return procs.read_json(self.path(rel))
+
+    def exists(self, rel):
+        return os.path.exists(self.path(rel))
+
+    def git(self, *args, check=True):
+        return gitops.git(self.root, *args, check=check)
+
+    def head(self):
+        return self.git("rev-parse", "HEAD")
+
+    def dirty(self):
+        return self.git("status", "--porcelain")
+
+    def tags(self):
+        return self.git("tag").split()
+
+    def log(self):
+        return self.git("log", "--format=%s").splitlines()
+
+    def owner(self, message, at=None):
+        from shackles import owner as ownermod
+        main = gitops.main_root(self.root)
+        ownermod.append_line(ownermod.log_path(main), message, at=at or future_ts())
+
+    # -- runner ----------------------------------------------------------------
+    def run(self, *argv, env=None, subprocess_mode=False):
+        full = ["--root", self.explicit_root] + [str(a) for a in argv]
+        if subprocess_mode:
+            proc = subprocess.run([sys.executable, os.path.join(self.root, "harness", "src", "run.py")] + full, capture_output=True,
+                                  text=True, encoding="utf-8", errors="replace", env=dict(os.environ, **{k: str(v) for k, v in (env or {}).items()}),
+                                  cwd=self.root)
+            return Result(proc.returncode, proc.stdout, proc.stderr)
+        out, err = io.StringIO(), io.StringIO()
+        with environ(env or {}), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(full)
+        return Result(code, out.getvalue(), err.getvalue())
+
+    def plan_file(self, plan=None):
+        _clock[0] += 1
+        path = os.path.join(self.scratch, f"PLAN-{_clock[0]}.json")
+        procs.write_json(path, plan or PLAN)
+        return path
+
+    def start(self, plan=None, no_branch=True, extra=(), env=None):
+        args = ["start", "--plan", self.plan_file(plan)] + (["--no-branch"] if no_branch else []) + list(extra)
+        return self.run(*args, env=env)
+
+    def next(self, *extra, env=None):
+        return self.run("next", *extra, env=env)
+
+    def record(self, step, attempt, message, cost=0.01, extra=(), env=None):
+        _clock[0] += 1
+        path = os.path.join(self.scratch, f"result-{step}-{attempt}-{_clock[0]}.txt")
+        procs.write_text(path, message if isinstance(message, str) else json.dumps(message))
+        args = ["record", "--step", step, "--attempt", str(attempt), "--result", path]
+        if cost is not None:
+            args += ["--cost", str(cost)]
+        return self.run(*args, *extra, env=env)
+
+    def owner_cmd(self, name, quote="ok", *extra, env=None):
+        return self.run(name, "--quote", quote, *extra, env=env)
+
+    def state(self, rid=1):
+        cfg = configmod.load(self.explicit_root)
+        return procs.read_json(cfg.abs_path(cfg.round_paths(rid)["state"]))
+
+    def folder(self, rid=1):
+        cfg = configmod.load(self.explicit_root)
+        return cfg.abs_path(cfg.round_paths(rid)["folder"])
+
+    def act(self, action, mode="pass", env=None, cost=0.01, extra=()):
+        import stub_agent
+        stub_env = dict(env or {})
+        message = stub_agent.perform(action["prompt_file"], mode, stub_env)
+        procs.write_text(action["result_file"], message)
+        args = ["record", "--step", action["step"], "--attempt", str(action["attempt"]), "--result", action["result_file"]]
+        if cost is not None:
+            args += ["--cost", str(cost)]
+        return self.run(*args, *extra)
+
+    def play(self, until=None, modes=None, env=None, limit=80, cost=0.01, auto_review=False):
+        """next/act until the action for `until` ("STEP" or "STEP:attempt") is due, or a checkpoint, done or error."""
+        modes = modes or {}
+        for _ in range(limit):
+            res = self.next()
+            if auto_review and res.code == 10 and res.json.get("checkpoint", {}).get("kind") == "review":
+                assert self.owner_cmd("approve", "approve").code == 0
+                continue
+            if res.json is None or res.code != 0 or res.json.get("kind") in ("checkpoint", "done"):
+                return res
+            step, attempt = res.json["step"], res.json["attempt"]
+            if until in (step, f"{step}:{attempt}"):
+                return res
+            mode = modes.get(f"{step}:{attempt}") or modes.get(step) or modes.get("*") or "pass"
+            rec = self.act(res.json, mode, env=env, cost=cost)
+            if auto_review and rec.code == 10 and rec.json.get("checkpoint", {}).get("kind") == "review":
+                assert self.owner_cmd("approve", "approve").code == 0
+                continue
+            if rec.code != 0:
+                return rec
+        raise AssertionError(f"play() did not reach {until} in {limit} actions")
+
+    # -- origins and clones -------------------------------------------------------
+    def add_origin(self):
+        self.origin = Origin(os.path.join(self.tmp, "origin.git"))
+        gitops.git(self.tmp, "init", "-q", "--bare", "-b", "main", self.origin.path)
+        self.git("remote", "add", "origin", self.origin.path)
+        self.git("push", "-q", "-u", "origin", "main")
+        return self.origin
+
+    def clone(self, name="clone"):
+        other = Repo.__new__(Repo)
+        other.tmp = os.path.join(self.tmp, name + "-tmp")
+        os.makedirs(other.tmp, exist_ok=True)
+        other.root = os.path.join(other.tmp, "repo")
+        gitops.git(other.tmp, "clone", "-q", self.origin.path, other.root)
+        other.scratch = os.path.join(other.tmp, "scratch")
+        os.makedirs(other.scratch, exist_ok=True)
+        other.stub_log = os.path.join(other.tmp, "stub.log")
+        other.origin = self.origin
+        other.explicit_root = other.root
+        return other
+
+    def view(self, worktree):
+        v = Repo.__new__(Repo)
+        v.__dict__.update(self.__dict__)
+        v.explicit_root = worktree
+        v.root = worktree
+        return v
+
+
+HOOK = '''#!{python}
+import os, subprocess, sys
+refname = sys.argv[1]
+log = {log!r}
+import fnmatch
+if not fnmatch.fnmatch(refname, {pattern!r}):
+    sys.exit(0)
+with open(log, "a", encoding="utf-8") as f:
+    f.write(refname + "\\n")
+with open(log, encoding="utf-8") as f:
+    count = len(f.read().splitlines())
+{body}
+'''
+REJECT_BODY = '''reject = {reject!r}
+if reject == "all" or count <= int(reject):
+    sys.exit(1)
+sys.exit(0)
+'''
+MOVE_BODY = '''if count == 1:
+    subprocess.run(["git", "update-ref", "refs/heads/main", "refs/heads/side"], check=True)
+    sys.exit(1)
+sys.exit(0)
+'''
+
+
+class Origin:
+    """A bare origin: origin-side truth read with git -C, and an installable Python update hook."""
+
+    def __init__(self, path):
+        self.path = path
+        self.hook = os.path.join(path, "hooks", "update")
+        self.log = os.path.join(os.path.dirname(path), "hook.log")
+
+    def git(self, *args):
+        return gitops.git(self.path, *args)
+
+    def sha(self, branch):
+        return self.git("rev-parse", "--verify", f"refs/heads/{branch}^{{commit}}")
+
+    def branches(self, prefix="refs/heads/"):
+        return self.git("for-each-ref", "--format=%(refname:short)", prefix).splitlines()
+
+    def tags(self):
+        return self.git("tag").split()
+
+    def install_reject_hook(self, pattern, reject):
+        self._install(HOOK.format(python=sys.executable.replace("\\", "/"), log=self.log, pattern=pattern, body=REJECT_BODY.format(reject=reject)))
+
+    def install_move_and_reject_once_hook(self):
+        self._install(HOOK.format(python=sys.executable.replace("\\", "/"), log=self.log, pattern="refs/heads/main", body=MOVE_BODY))
+
+    def _install(self, text):
+        with open(self.hook, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.chmod(self.hook, 0o755)
+
+    def remove_hook(self):
+        if os.path.exists(self.hook):
+            os.remove(self.hook)
+
+    def hook_log(self):
+        if not os.path.exists(self.log):
+            return []
+        with open(self.log, encoding="utf-8") as f:
+            return f.read().splitlines()

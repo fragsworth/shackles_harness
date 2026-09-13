@@ -1,0 +1,13 @@
+{
+  "round": 1,
+  "agents": {"PLAN-AGENTS": "max", "PLAN-TO-SPEC": "max", "SPEC-TO-TESTS": "max", "SPEC-TO-IMPLEMENTATION": "max",
+             "TESTS-TO-SUITE": "max", "CLEANUP": "max", "POSTMORTEM": "max"},
+  "shares": {
+    "work": {"PLAN-AGENTS": 0.01, "PLAN-TO-SPEC": 0.02, "SPEC-TO-TESTS": 0.02, "SPEC-TO-IMPLEMENTATION": 0.01,
+             "TESTS-TO-SUITE": 0.02, "CLEANUP": 0.9, "POSTMORTEM": 0.02},
+    "gates": {"PLAN-AGENTS": 0.1, "PLAN-TO-SPEC": 0.2, "SPEC-TO-TESTS": 0.2, "SPEC-TO-IMPLEMENTATION": 0.2,
+              "TESTS-TO-SUITE": 0.15, "POSTMORTEM": 0.15}
+  },
+  "subAgents": {},
+  "notes": "PLANTED-DEFECT: 0.9 of the work budget goes to CLEANUP, a no-new-behaviour step, and 0.01 to the implementation"
+}
