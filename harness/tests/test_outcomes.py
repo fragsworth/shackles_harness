@@ -228,6 +228,35 @@ def test_override_at_a_review_checkpoint_stands_until_approve(tmp_path):
     assert res.json["step"] == "SPEC-TO-IMPLEMENTATION" and r.json(f"{FOLDER}/FINDINGS/SPEC-TO-TESTS-GATE-1.json")["source"] == "override"
 
 
+def test_override_of_the_pending_step_discards_its_unrecorded_work(tmp_path):
+    """Overriding the step whose attempt is pending reverts the agent's unrecorded files instead of committing them unchecked (R4-M1)."""
+    r = Repo(tmp_path)
+    r.start()
+    a = r.next().json
+    stub_agent.perform(a["prompt_file"], "pass", {"STUB_RUNG": "low"})
+    assert r.exists(f"{FOLDER}/AGENTS-PLAN.json")
+    res = r.run("override", "--steps", "PLAN-AGENTS", "--quote", "skip the agents plan")
+    assert res.code == 0 and r.dirty() == "" and not r.exists(f"{FOLDER}/AGENTS-PLAN.json")
+    assert r.log()[0] == "round 0001: override at active" and "AGENTS-PLAN.json" not in r.git("show", "--stat", "--format=", "HEAD")
+    assert "override: unrecorded work of PLAN-AGENTS attempt 1 discarded: harness/archives/rounds/0001/AGENTS-PLAN.json" in history(r)
+    res = r.next()
+    assert res.json["step"] == "PLAN-TO-SPEC" and res.json["agent"] == "max", "skipped with defaults, not with the unrecorded plan"
+    assert "PLAN-AGENTS" not in r.state()["attempts"] and r.state()["attempt_pending"]["step"] == "PLAN-TO-SPEC"
+    d = Repo(tmp_path / "d")
+    d.start(extra=["--delegate"])
+    res = d.play(until="CLEANUP")
+    stub_agent.perform(res.json["prompt_file"], "stray", {})
+    d.append("src/toy/text.py", "\n\ndef unchecked():\n    return 1\n")
+    res = d.run("override", "--steps", "CLEANUP", "--quote", "skip cleanup")
+    assert res.code == 0 and d.dirty() == "" and not d.exists("stray.txt") and "unchecked" not in d.read("src/toy/text.py")
+    line = [l for l in history(d).splitlines() if "unrecorded work of CLEANUP attempt 1 discarded" in l][0]
+    assert "src/toy/text.py" in line and "stray.txt" in line
+    res = d.play()
+    assert res.json["kind"] == "done" and d.state()["landed_at"] and "CLEANUP" not in d.state()["attempts"]
+    assert not d.exists("stray.txt") and "unchecked" not in d.read("src/toy/text.py") and "CLEANUP overridden: skipped with defaults" in history(d)
+    assert not d.exists(f"{FOLDER}/FINDINGS/CLEANUP-1.mechanical.json") and "M1" not in history(d), "nothing was checked because nothing was kept"
+
+
 def test_hard_stop_raised_once(tmp_path):
     r = Repo(tmp_path, config={"hardStopBudgetMultiple": 1})
     r.start(extra=["--budget", "1"])

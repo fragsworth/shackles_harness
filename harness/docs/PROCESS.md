@@ -86,7 +86,7 @@ Every checkpoint message carries the spend versus the quote, the counts of defin
 The CHECKPOINT entry reaches HISTORY after the attempt entry that raised it (`save` writes it).
 `delegate` is approve plus delegation; delegation skips only `review` checkpoints, and `--through STEP` skips those at or before STEP, where STEP may name the producer or its gate (`PLAN-TO-SPEC` and `PLAN-TO-SPEC-GATE` skip the same reviews); a `through` that is absent, null or empty (in the plan or on the command line) skips every review, and one naming no step is refused.
 `answer --text T` turns the text into finding `O1` for the producer of the checkpoint, which runs again with it.
-`override --steps A,B` skips overridable steps not yet accepted, at any time; at a checkpoint it resumes the round when the checkpoint's own step is now overridden, otherwise the checkpoint stands and `approve` follows; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
+`override --steps A,B` skips overridable steps not yet accepted, at any time, and discards the unrecorded work of a pending attempt of a step it names (HISTORY lists the reverted paths); at a checkpoint it resumes the round when the checkpoint's own step is now overridden, otherwise the checkpoint stands and `approve` follows; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
 NEEDS-OWNER with the gate disabled and the round delegated proceeds on the stated assumption and appends it to `UNDEFINED_JUDGMENT_CALLS.md`; so does a gate verdict that neither upholds nor withdraws the question.
 
 ## Caps and stops

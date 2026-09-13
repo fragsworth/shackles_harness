@@ -1270,7 +1270,13 @@ class Round:
                 raise RunnerError(f"{name} is already accepted", 2)
             if name not in st["overrides"]:
                 st["overrides"].append(name)
-        if st.get("attempt_pending") and st["attempt_pending"]["step"] in st["overrides"]:
+        pending = st.get("attempt_pending")
+        if pending and pending["step"] in st["overrides"]:  # its unrecorded work is discarded, never swept unchecked into this command's commit
+            keep = [self.repo_rel(self.paths[k]) for k in ("state", "history", "ownerLog")]
+            dirty = checks.dirty(self.root, exclude=keep)
+            checks.revert(self.root, dirty)
+            if dirty:
+                self.history(f"override: unrecorded work of {pending['step']} attempt {pending['attempt']} discarded: {', '.join(p for _, p in dirty)}")
             st["attempt_pending"] = None
         self.history("override: " + ", ".join(steps))
 

@@ -38,6 +38,7 @@ A `question` or `blocked` checkpoint leaves the attempt recorded but not accepte
 `record` exit 2 with kind `invalid`: the message was not the JSON the prompt asked for; run `next` again, which reprints the same attempt, and spawn again.
 Exit 10 from `next` or `record`: relay `message` to the owner verbatim and stop; when the owner speaks, run the matching command with their exact words in `--quote` (the commands are listed in the message; add `--through STEP` to `delegate` for "delegate through STEP").
 `override` at a checkpoint resumes the round only when the checkpoint's own step is now overridden (never at a `review`, whose step is already accepted); otherwise it records the overrides and prints the checkpoint again (exit 10, with a note under `warnings`), and `approve` with the same quote resumes.
+Overriding the step whose attempt is pending discards that attempt's unrecorded work (the agent's files, listed in HISTORY) instead of committing it unchecked: `record` first to keep it.
 `push rejected` from `record` means another runner owns the round: stop and report.
 A crash mid-command is resumed by rerunning `next`; unrecorded work of a pending attempt is refused until you `record` it or run `next --discard`, so always `record` before another `next`.
 An owner's out-of-band edit of PLAN.json, SPEC.json or SPEC.md counts only once committed in the worktree; `next` resets an uncommitted one with the dirty tree.
