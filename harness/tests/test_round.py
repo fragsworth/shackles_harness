@@ -207,6 +207,35 @@ def test_full_round_every_gate_disabled_and_delegation(tmp_path):
     assert seen == [("review", "CLEANUP")]
 
 
+def test_delegation_from_the_plan(tmp_path):
+    """The plan's approval alone delegates; an empty or null `through` means every review is skipped (test-A 3.1)."""
+    for name, through in (("empty", ""), ("null", None)):
+        p = repo(tmp_path / name)
+        assert p.start(plan=dict(PLAN, approval={"mode": "delegated", "through": through, "overrides": [], "words": "delegate"})).code == 0
+        assert p.state()["approval"]["mode"] == "delegated"
+        seen, res = drive(p, env={"STUB_ARCHIVE": "1"})
+        assert seen == [] and res.json["kind"] == "done", name
+        assert "review checkpoint after CLEANUP skipped (delegated)" in p.read("harness/archives/rounds/0001/HISTORY.md")
+    q = repo(tmp_path / "step")
+    assert q.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "NOPE"})).code == 2
+    assert q.start(plan=dict(PLAN, approval={"mode": "delegated", "through": "PLAN-TO-SPEC-GATE", "words": "delegate through PLAN-TO-SPEC-GATE"})).code == 0
+    seen, res = drive(q, env={"STUB_ARCHIVE": "1"})
+    assert seen == [("review", "CLEANUP")]
+
+
+def test_delegate_at_a_checkpoint(tmp_path):
+    r = repo(tmp_path)
+    r.start()
+    res = r.play()
+    assert res.json["checkpoint"]["kind"] == "review" and res.json["checkpoint"]["step"] == "PLAN-TO-SPEC-GATE"
+    res = r.run("delegate", "--through", "NOPE", "--quote", "delegate through nope")
+    assert res.code == 2 and "unknown step NOPE" in res.json["error"] and r.state()["status"] == "checkpoint"
+    res = r.run("delegate", "--quote", "delegate")
+    assert res.code == 0 and r.state()["approval"]["mode"] == "delegated" and r.state()["approval"]["through"] is None
+    seen, res = drive(r, env={"STUB_ARCHIVE": "1"})
+    assert seen == [] and res.json["kind"] == "done", "delegating at the first review skips the later one"
+
+
 def test_overrides(tmp_path):
     r = repo(tmp_path)
     plan = dict(PLAN, approval={"mode": "approved", "overrides": ["PLAN-AGENTS", "TESTS-TO-SUITE", "CLEANUP"]})

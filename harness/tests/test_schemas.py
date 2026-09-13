@@ -28,6 +28,11 @@ def test_plan_schema():
     assert any(e.startswith("PLAN: presented_at should match") for e in errors)
     assert schemas.validate(dict(PLAN, approval={"mode": "maybe"}), schemas.SCHEMAS["PLAN"], "PLAN") == \
         ["PLAN: approval.mode should be one of approved, delegated, got 'maybe'"]
+    for through in (None, "", "PLAN-TO-SPEC-GATE"):
+        assert schemas.validate(dict(PLAN, approval={"mode": "delegated", "through": through}), schemas.SCHEMAS["PLAN"], "PLAN") == [], through
+    assert schemas.validate(dict(PLAN, approval={"mode": "delegated", "through": 3}), schemas.SCHEMAS["PLAN"], "PLAN") == \
+        ["PLAN: approval.through should be str or null, got int"]
+    assert schemas.json_schema("PLAN")["properties"]["approval"]["properties"]["through"]["type"] == ["string", "null"]
 
 
 def test_agents_plan_spec_suite_schemas():

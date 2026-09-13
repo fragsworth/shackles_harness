@@ -4,8 +4,8 @@ import re
 
 from . import contract
 
-TYPES = {"str": str, "int": int, "number": (int, float), "bool": bool, "list": list, "dict": dict}
-JSON_TYPES = {"str": "string", "int": "integer", "number": "number", "bool": "boolean", "list": "array", "dict": "object"}
+TYPES = {"str": str, "int": int, "number": (int, float), "bool": bool, "list": list, "dict": dict, "null": type(None)}
+JSON_TYPES = {"str": "string", "int": "integer", "number": "number", "bool": "boolean", "list": "array", "dict": "object", "null": "null"}
 
 
 def _isa(value, tname):
@@ -70,7 +70,8 @@ SCHEMAS = {
             "assumptions": dict(STR_LIST, doc="what was decided without asking"),
             "todos": {"type": "dict", "doc": "accepted TODO items by id"},
             "approval": {"type": "dict", "required": ["mode"], "properties": {
-                "mode": {"type": "str", "enum": ["approved", "delegated"]}, "through": STR,
+                "mode": {"type": "str", "enum": ["approved", "delegated"]},
+                "through": {"type": ["str", "null"], "doc": "delegated: the last step whose review checkpoint is skipped; omit it (or null, or empty) to skip every review"},
                 "overrides": STR_LIST, "words": STR, "source": STR}, "doc": "the owner's word, verbatim"},
             "owner_words": STR_LIST,
             "provided_artifacts": {"type": "dict", "additionalProperties": STR, "doc": "artifact key -> path, for overridden producers"},

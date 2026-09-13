@@ -8,5 +8,6 @@ docs/TODO.md, verbatim:
 docs/CLARIFICATIONS.md, verbatim:
 {{ round.clarifications }}
 Write the plan as PLAN.json to "{{ round.harness_root }}/DRAFT-PLAN.json": {{ step.artifact_contract }}
-Set presented_at (UTC, YYYY-MM-DDTHH:MM:SSZ) when you show the plan to the owner. When the owner's words approve or delegate, fill approval (mode approved or delegated, through, overrides, words verbatim) and run: py -3.13 "{{ round.runner }}" --root "{{ round.worktree }}" start --plan "{{ round.harness_root }}/DRAFT-PLAN.json"
+Set presented_at (UTC, YYYY-MM-DDTHH:MM:SSZ) when you show the plan to the owner. When the owner's words approve or delegate, fill approval: mode (approved or delegated), words (verbatim), overrides (the steps to skip, [] for none) and, only for "delegate through STEP", through (omit it otherwise: a delegated plan without it skips every review checkpoint). Then run: py -3.13 "{{ round.runner }}" --root "{{ round.worktree }}" start --plan "{{ round.harness_root }}/DRAFT-PLAN.json"
+The plan's approval decides; --delegate [--through STEP] on that command line means the same and overrides the plan's mode.
 Then follow harness/docs/DRIVER.md: next, spawn, save, record, until done.

@@ -208,11 +208,12 @@ class Round:
         return a.get("mode") == "delegated"
 
     def delegated_through(self, name):
+        """Delegation skips the review checkpoint after `name`: every one when `through` is absent, null or empty, else those at or before it."""
         a = self.state.get("approval") or {}
         if a.get("mode") != "delegated":
             return False
         through = a.get("through")
-        return through is None or (through in pipeline.BY_NAME and pipeline.index(name) <= pipeline.index(through))
+        return not through or (through in pipeline.BY_NAME and pipeline.index(name) <= pipeline.index(through))
 
     def budgets(self):
         work, gates = ledger.shares(self.cfg, self.agents_plan(), self.state["overrides"], self.gate_runs)
@@ -1123,6 +1124,8 @@ class Round:
         st = self.state
         if command not in ("override", "abandon") and st["status"] != "checkpoint":
             raise RunnerError(f"{command} needs a checkpoint; the round is {st['status']}", 2)
+        if through and through not in pipeline.BY_NAME:
+            raise RunnerError(f"--through names unknown step {through}", 2)
         cp = st.get("checkpoint") or {}
         verified = ownermod.verify_quote(self.owner_log, quote, cp.get("at") if st["status"] == "checkpoint" else None)
         if verified is False and not unverified:
