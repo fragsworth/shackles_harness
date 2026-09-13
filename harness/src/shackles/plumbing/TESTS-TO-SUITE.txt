@@ -1,0 +1,1 @@
+Test files changed this round under testPaths: {{ step.changed_tests }}. Every one of them appears in exactly one of keep or archive; the runner moves archived files into the round folder's tests-archive/ at acceptance.

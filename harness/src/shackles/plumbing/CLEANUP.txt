@@ -1,0 +1,1 @@
+verify ({{ step.verify }}) and the permanent suite ({{ step.suite_command }}) must be green when you finish; the runner runs both.
