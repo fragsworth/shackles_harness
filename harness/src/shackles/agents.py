@@ -137,6 +137,10 @@ def probe_cli(cfg, root):
     text, meta = parse_envelope(proc.out)
     obj = schemas.extract_json(text) if text else None
     ok = proc.ok and isinstance(obj, dict) and obj.get("ok") is True
+    error = None
+    if not ok:
+        error = (text or "").strip()[-300:] or proc.err.strip()[-300:] or proc.out.strip()[-300:] or "no output"
+        if "not logged in" in error.lower():
+            error += " (the standalone CLI has no login: run `claude auth login` in a terminal, or set ANTHROPIC_API_KEY)"
     return {"ok": ok, "rung": rung_name, "model": rung.get("model"), "exit": proc.code, "cost_usd": meta.get("total_cost_usd"),
-            "num_turns": meta.get("num_turns"), "timed_out": proc.timed_out,
-            "error": None if ok else (proc.err.strip()[-600:] or proc.out.strip()[-600:] or "no output"), "claude": argv[0]}
+            "num_turns": meta.get("num_turns"), "timed_out": proc.timed_out, "error": error, "claude": argv[0]}

@@ -120,8 +120,11 @@ def write_spec(root, gates=None, config=None, spec="fixture"):
 
 
 def write_toy(root):
-    for dirpath, _, names in os.walk(TOY):
+    for dirpath, dirs, names in os.walk(TOY):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
         for name in names:
+            if name.endswith(".pyc"):
+                continue
             src = os.path.join(dirpath, name)
             dst = os.path.join(root, os.path.relpath(src, TOY))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -178,23 +181,42 @@ def environ(extra):
                 os.environ[k] = v
 
 
+TEMPLATES = {}
+
+
+def build_repo(root, gates, config, spec):
+    os.makedirs(root)
+    write_spec(root, gates, config, spec)
+    write_toy(root)
+    copy_runner(root)
+    procs.write_text(os.path.join(root, ".gitignore"), GITIGNORE)
+    procs.write_text(os.path.join(root, ".gitattributes"), "harness/archives/**/*.jsonl merge=union\n")
+    from shackles import specguard
+    specguard.accept(root, "fixture baseline")
+    gitops.git(root, "init", "-q", "-b", "main")
+    gitops.git(root, "add", "-A")
+    gitops.git(root, "commit", "-q", "-m", "base")
+
+
+def template_repo(gates, config, spec):
+    """One built repository per distinct (gates, config, spec), copied for every test that asks for it."""
+    key = json.dumps([gates, config, spec], sort_keys=True, default=str)
+    if key not in TEMPLATES:
+        import tempfile
+        root = os.path.join(tempfile.mkdtemp(prefix="shackles-template-"), "repo")
+        build_repo(root, gates, config, spec)
+        TEMPLATES[key] = root
+    return TEMPLATES[key]
+
+
 class Repo:
     """A throwaway repository holding the fixture spec, the toy project and a copy of the runner."""
 
     def __init__(self, tmp, gates=None, config=None, spec="fixture", branch=None):
         self.tmp = str(tmp)
         self.root = os.path.join(self.tmp, "repo")
-        os.makedirs(self.root)
-        write_spec(self.root, gates, config, spec)
-        write_toy(self.root)
-        copy_runner(self.root)
-        procs.write_text(os.path.join(self.root, ".gitignore"), GITIGNORE)
-        procs.write_text(os.path.join(self.root, ".gitattributes"), "harness/archives/**/*.jsonl merge=union\n")
-        from shackles import specguard
-        specguard.accept(self.root, "fixture baseline")
-        self.git("init", "-q", "-b", "main")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", "base")
+        os.makedirs(self.tmp, exist_ok=True)
+        shutil.copytree(template_repo(gates, config, spec), self.root)
         if branch:
             self.git("checkout", "-q", "-b", branch)
         self.scratch = os.path.join(self.tmp, "scratch")

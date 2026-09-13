@@ -27,7 +27,7 @@ def start_wt(r, **kw):
 def assert_nothing_created(r, rid="0001"):
     assert not os.path.exists(os.path.join(r.root, ".claude", "worktrees", f"round-{rid}"))
     assert f"round/{rid}" not in r.git("branch", "--list", "--format=%(refname:short)").split()
-    assert r.git("log", "--all", "--format=%s", "--", f"harness/archives/rounds/{rid}") == ""
+    assert r.git("log", "--branches", "--format=%s", "--", f"harness/archives/rounds/{rid}") == ""
     assert r.dirty() == "" and r.git("rev-parse", "--abbrev-ref", "HEAD") == "main"
 
 
@@ -47,9 +47,9 @@ def test_claim_creates_the_worktree_on_the_claimed_branch(tmp_path):
 
 def test_lost_race_takes_the_next_id_and_creates_nothing_for_the_lost_one(tmp_path):
     r = with_origin(tmp_path)
-    start_wt(r)
     b = r.clone("b")
     b.git("config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")
+    start_wt(r)
     res, vb = start_wt(b)
     assert res.json["branch"] == "round/0002" and res.json["id"] == "0002"
     assert_nothing_created(b, "0001")
@@ -127,8 +127,9 @@ def test_worktree_round_reads_the_owner_log_from_main_and_pushes_from_the_worktr
     assert r.origin.sha("round/0001") == v.head()
     v.write(FOLDER + "/HISTORY.md", v.read(FOLDER + "/HISTORY.md") + "\nlocal note\n")
     v.git("commit", "-q", "-am", "an unpushed commit")
-    assert r.origin.sha("round/0001") != v.head()
-    assert v.next().code == 0 and r.origin.sha("round/0001") == v.head()
+    unpushed = v.head()
+    assert r.origin.sha("round/0001") != unpushed
+    assert v.next().code == 0 and r.origin.sha("round/0001") == unpushed, "next pushes when the branch is ahead"
 
 
 def test_fence_another_runner_owns_the_round(tmp_path):
@@ -203,7 +204,7 @@ def test_move_and_reject_once_retries_inside_one_next(tmp_path):
     st = v.state()
     assert st["attempts"]["LANDING"] == 1 and st["landed_at"]
     assert r.origin.hook_log() == ["refs/heads/main", "refs/heads/main"]
-    assert v.exists("src/sibling.py") and r.origin.sha("main") == v.head()
+    assert v.exists("src/sibling.py") and r.origin.sha("main") == v.git("rev-parse", "refs/tags/round/0001-landed^{commit}")
 
 
 def test_reject_all_on_main_leaves_the_round_at_landing(tmp_path):
@@ -218,7 +219,7 @@ def test_reject_all_on_main_leaves_the_round_at_landing(tmp_path):
     assert not [e for e in st["spend"]["entries"] if e["source"] == "living"]
     r.origin.remove_hook()
     res = v.next()
-    assert res.code == 0 and v.state()["landed_at"] and r.origin.sha("main") == v.head()
+    assert res.code == 0 and v.state()["landed_at"] and r.origin.sha("main") == v.git("rev-parse", "refs/tags/round/0001-landed^{commit}")
 
 
 def conflicting_sibling(r):
@@ -226,7 +227,7 @@ def conflicting_sibling(r):
 
 
 def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
-    r = with_origin(tmp_path)
+    r = with_origin(tmp_path, config={"maxFailuresBeforeStop": 6})
     res, v = start_wt(r)
     to_landing(v)
     conflicting_sibling(r)
@@ -249,15 +250,16 @@ def test_conflict_becomes_a_merge_attempt_that_converges(tmp_path):
     l3 = v.json(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-2.mechanical.json")["findings"]
     assert [f["id"] for f in l3] == ["L3"] and gitops.ref_exists(v.root, "MERGE_HEAD")
     res = v.next()
-    assert res.json["attempt"] == 3
+    assert res.json["attempt"] == 3 and gitops.ref_exists(v.root, "MERGE_HEAD")
     stub_agent.write(v.root + "/harness", "../stray.txt", "STUB-STRAY\n")
     rec = v.act(res.json, "resolve")
     assert rec.code == 0, rec
-    commit = v.git("log", "-1", "--format=%P", "--", ".")
+    m1 = v.json(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-3.mechanical.json")["findings"]
+    assert [f["id"] for f in m1] == ["M1"] and "stray.txt" in m1[0]["quote"] and not v.exists("stray.txt")
     merge_commit = v.git("rev-list", "-n", "1", "--merges", "HEAD")
-    assert merge_commit and not gitops.ref_exists(v.root, "MERGE_HEAD") and not v.exists("stray.txt")
-    assert "M1" in json.dumps(v.json(FOLDER + "/FINDINGS/SPEC-TO-IMPLEMENTATION-3.mechanical.json")) or v.state()["step"] == "SPEC-TO-IMPLEMENTATION-GATE" or v.state()["step"] == "LANDING"
-    res = v.play()
+    assert merge_commit and not gitops.ref_exists(v.root, "MERGE_HEAD") and v.state()["merge_pending"] is None
+    assert len(v.git("log", "-1", "--format=%P", merge_commit).split()) == 2
+    res = v.play(modes={"SPEC-TO-IMPLEMENTATION:4": "noop"})
     assert res.json["kind"] == "done", res
     assert v.state()["landed_at"] and r.origin.sha("main") == v.head()
     text = v.read("src/toy/text.py")
@@ -343,8 +345,8 @@ def test_w1_warns_about_a_live_sibling_declaring_the_same_paths(tmp_path):
     assert rec.code == 0
     carried = v2.state(2)["carried"]
     assert carried and carried[0]["id"] == "W1" and "round 0001" in carried[0]["quote"]
-    prompt = open(v2.next().json["prompt_file"], encoding="utf-8").read()
-    assert "W1" in prompt
+    res = v2.play(until="SPEC-TO-TESTS", auto_review=True)
+    assert "W1" in open(res.json["prompt_file"], encoding="utf-8").read()
 
 
 def test_abandon_pushes_the_tag_and_rounds_reports_claimed_but_empty(tmp_path):

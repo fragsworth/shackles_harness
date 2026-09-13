@@ -35,11 +35,12 @@ def claim(root, cfg, explicit=None):
 def merge_tree(root, ours, theirs):
     """(clean, tree oid, conflicted paths) from git merge-tree --write-tree."""
     proc = gitops.git_proc(root, "merge-tree", "--write-tree", "--name-only", ours, theirs)
-    lines = [l for l in proc.out.splitlines() if l.strip()]
+    head_section = proc.out.replace("\r\n", "\n").split("\n\n", 1)[0]
+    lines = [l for l in head_section.splitlines() if l.strip()]
     if proc.code == 0:
         return True, lines[0] if lines else None, []
     if proc.code == 1 and lines:
-        return False, lines[0], [procs.posix(p) for p in lines[1:]]
+        return False, lines[0], sorted(set(procs.posix(p) for p in lines[1:]))
     raise RunnerError(f"git merge-tree failed: {(proc.err or proc.out).strip()[-300:]}")
 
 

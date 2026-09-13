@@ -34,11 +34,20 @@ def git_ok(root, *args):
 
 
 def head(root):
-    return git(root, "rev-parse", "HEAD") if git_ok(root, "rev-parse", "--verify", "-q", "HEAD") else None
+    proc = git_proc(root, "rev-parse", "--verify", "-q", "HEAD")
+    return proc.out.strip() if proc.ok and proc.out.strip() else None
 
 
 def ref_exists(root, ref):
     return git_ok(root, "rev-parse", "--verify", "-q", ref + "^{commit}")
+
+
+def git_dir(root):
+    return os.path.abspath(os.path.join(root, git(root, "rev-parse", "--git-dir")))
+
+
+def merging(root, gitdir=None):
+    return os.path.exists(os.path.join(gitdir or git_dir(root), "MERGE_HEAD"))
 
 
 def branch_exists(root, name):

@@ -68,6 +68,8 @@ def toy_verify():
 def write_artifact(step, keys, text, mode, env):
     harness, artifact = keys["HARNESS"], keys.get("ARTIFACT")
     rnd = int(keys.get("ROUND", "1"))
+    if mode == "noop":
+        return
     if step == "PLAN-AGENTS":
         rows = prompt_json(text, "Steps this round, with their gates and whether each gate runs:") or []
         present = [r["step"] for r in rows if not r.get("overridden") and r["step"] != "CHAT-TO-PLAN"]

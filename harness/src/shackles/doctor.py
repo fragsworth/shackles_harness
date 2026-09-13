@@ -2,6 +2,7 @@
 import json
 import os
 import platform
+import re
 import sys
 
 from . import agents, config as configmod, contract, gitops, pipeline, prompts, procs, specguard
@@ -33,6 +34,30 @@ def wording_warnings(cfg, root):
     text = "\n".join(t for t in (prompts.prose_reader(cfg, root)(n[:-4]) for n in prompts.prose_names(cfg, root)) if t)
     return [f"the word {w!r} does not appear in the locked prose (the runner's contract uses it)"
             for w in contract.STATUSES + contract.VERDICTS if w not in text]
+
+
+def windows(text, n=8):
+    tokens = [t for t in re.findall(r"[a-z0-9]+", text.lower())]
+    return {" ".join(tokens[i:i + n]) for i in range(len(tokens) - n + 1)}
+
+
+def overlap_warnings(cfg, root):
+    """Source files sharing an 8-word window with the locked prose: mechanics must not depend on wording."""
+    prose = set()
+    reader = prompts.prose_reader(cfg, root)
+    for name in prompts.prose_names(cfg, root):
+        prose |= windows(reader(name[:-4]) or "")
+    out = []
+    src = os.path.join(root, "harness", "src")
+    for dirpath, _, names in os.walk(src):
+        for name in names:
+            if not name.endswith((".py", ".txt")):
+                continue
+            path = os.path.join(dirpath, name)
+            shared = windows(procs.read_text(path)) & prose
+            if shared:
+                out.append(f"{os.path.relpath(path, root).replace(os.sep, '/')} shares {len(shared)} eight-word window(s) with the locked prose, e.g. {next(iter(sorted(shared)))!r}")
+    return out
 
 
 def render_all(cfg, root, prose_commit=None):
@@ -116,6 +141,7 @@ def run(root, probe_cli=False):
         if not info["probe_cli"].get("ok"):
             errors.append("probe-cli failed: " + str(info["probe_cli"].get("error")))
     warnings += [f"wording: {w}" for w in wording_warnings(cfg, root)]
+    warnings += [f"overlap: {w}" for w in overlap_warnings(cfg, root)]
     waived = waivers(root)
     rendered = render_all(cfg, root)
     info["prompts"] = {}

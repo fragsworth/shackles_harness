@@ -227,12 +227,20 @@ def s2_suite(cfg, obj, root, harness_root, base_commit, test_paths):
     return errors
 
 
-def l3_unmerged(root):
-    out = gitops.git(root, "ls-files", "-u", check=False)
-    paths = sorted(set(procs.posix(l.split("\t")[-1]) for l in out.splitlines() if "\t" in l))
-    if not paths:
+def l3_unmerged(root, conflicted):
+    """Conflicted files (repo-relative) that still carry conflict markers in the working tree."""
+    left = []
+    for path in conflicted:
+        full = os.path.join(root, *path.split("/"))
+        if not os.path.exists(full):
+            continue
+        for line in procs.read_text(full).splitlines():
+            if line.startswith(("<<<<<<< ", ">>>>>>> ")) or line == "=======":
+                left.append(path)
+                break
+    if not left:
         return []
-    return [finding("L3", "\n".join(paths), "conflicted files left unresolved", "resolve every listed file and remove the markers")]
+    return [finding("L3", "\n".join(left), "conflicted files left unresolved", "resolve every listed file and remove the markers")]
 
 
 def spec_paths(root):

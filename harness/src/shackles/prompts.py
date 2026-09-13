@@ -21,7 +21,8 @@ def plumbing_reader():
     return read
 
 
-def prose_reader(cfg, root, prose_commit=None):
+def prose_reader(cfg, root, prose_commit=None, names=None):
+    """A `name -> text or None` reader: from the working tree, or from prose_commit in one batched git call."""
     prose_dir = cfg.prose_dir()
     cache = {}
 
@@ -29,13 +30,14 @@ def prose_reader(cfg, root, prose_commit=None):
         rel = cfg.repo_rel(f"{prose_dir}/{name}.txt")
         if prose_commit:
             if not cache:
-                names = prose_names(cfg, root, prose_commit)
-                loaded = gitops.show_many(root, prose_commit, [cfg.repo_rel(f"{prose_dir}/{n}") for n in names])
-                cache.update({cfg.repo_rel(f"{prose_dir}/{n}"): loaded.get(cfg.repo_rel(f"{prose_dir}/{n}")) for n in names})
+                listed = names if names is not None else prose_names(cfg, root, prose_commit)
+                paths = [cfg.repo_rel(f"{prose_dir}/{n}") for n in listed] + [cfg.repo_rel(AGENTS_MD)]
+                cache.update(gitops.show_many(root, prose_commit, paths))
                 cache.setdefault("", None)
             return cache.get(rel)
         path = os.path.join(root, *rel.split("/"))
         return procs.read_text(path) if os.path.exists(path) else None
+    read.cache = cache
     return read
 
 
@@ -211,7 +213,9 @@ def render_prompt(cfg, root, name, round_ctx, step_ctx, project_ctx=None, prose_
     text = prose(prose_file[:-4]) if prose_file else None
     if text is None:
         raise RunnerError(f"step {name} has no prose {prose_file}: restore it or override the step", 2)
-    header = agents_md(cfg, root, prose_commit) if header is None else header
+    if header is None:
+        cached = getattr(prose, "cache", {}).get(cfg.repo_rel(AGENTS_MD)) if prose_commit else None
+        header = cached if cached is not None else agents_md(cfg, root, prose_commit)
     out = render.assemble(header, text, r)
     tokens = len(out.encode("utf-8")) / max(cfg["tokenBytes"], 1)
     if tokens > cfg["promptTokenWarn"]:

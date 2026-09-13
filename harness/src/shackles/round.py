@@ -51,10 +51,32 @@ class Round:
         self.folder = self.abs(self.paths["folder"])
         state_path = self.abs(self.paths["state"])
         self.state = procs.read_json(state_path) if os.path.exists(state_path) else None
-        self.main_root = gitops.main_root(self.root)
-        self.owner_log = ownermod.log_path(self.main_root)
         self.notes = []
         self._prose_names = None
+        self._cache = {}
+
+    def cached(self, key, compute):
+        if key not in self._cache:
+            self._cache[key] = compute()
+        return self._cache[key]
+
+    @property
+    def main_root(self):
+        return self.cached("main_root", lambda: gitops.main_root(self.root))
+
+    @property
+    def owner_log(self):
+        return ownermod.log_path(self.main_root)
+
+    @property
+    def git_dir(self):
+        return self.cached("git_dir", lambda: gitops.git_dir(self.root))
+
+    def has_origin(self):
+        return self.cached("has_origin", lambda: gitops.has_origin(self.root))
+
+    def merging(self):
+        return gitops.merging(self.root, self.git_dir)
 
     # ---- paths and files -------------------------------------------------
     def abs(self, rel):
@@ -125,15 +147,19 @@ class Round:
     def head(self):
         return gitops.head(self.root)
 
-    def commit(self, message, push=True):
+    def commit(self, message, push=True, merge=False):
+        """Commit everything; during a merge attempt only the merge commit itself is made (merge=True)."""
+        if self.merging() and not merge:
+            return
         gitops.git(self.root, "add", "-A")
-        if not gitops.git_ok(self.root, "diff", "--cached", "--quiet") or gitops.ref_exists(self.root, "MERGE_HEAD"):
-            gitops.git(self.root, "commit", "-q", "--no-verify", "-m", f"round {self.id}: {message}")
+        proc = gitops.git_proc(self.root, "commit", "-q", "--no-verify", "-m", f"round {self.id}: {message}")
+        if not proc.ok and "nothing to commit" not in proc.out + proc.err and "nothing added to commit" not in proc.out + proc.err:
+            raise RunnerError(f"git commit failed: {(proc.err or proc.out).strip()[-300:]}")
         if push:
             self.push()
 
     def push(self):
-        if self.state["mode"] != "worktree" or not gitops.has_origin(self.root):
+        if self.state["mode"] != "worktree" or not self.has_origin():
             return
         proc = gitops.git_proc(self.root, "push", "--porcelain", "origin", f"HEAD:refs/heads/{self.state['branch']}")
         if proc.ok:
@@ -144,10 +170,8 @@ class Round:
         raise RunnerError(f"push failed: {text.strip()[-400:]}; rerun next, which pushes when the branch is ahead", 1)
 
     def ahead(self):
-        remote = f"refs/remotes/origin/{self.state['branch']}"
-        if not gitops.ref_exists(self.root, remote):
-            return True
-        return gitops.git(self.root, "rev-list", "--count", f"{remote}..HEAD", check=False) not in ("", "0")
+        proc = gitops.git_proc(self.root, "rev-list", "--count", f"refs/remotes/origin/{self.state['branch']}..HEAD")
+        return not proc.ok or proc.out.strip() not in ("", "0")
 
     def prompt_commit(self, step, attempt):
         message = f"round {self.id}: {step} attempt {attempt} prompt"
@@ -159,6 +183,9 @@ class Round:
         if self._prose_names is None:
             self._prose_names = prompts.prose_names(self.cfg, self.root, self.state["prose_commit"])
         return self._prose_names
+
+    def prose(self):
+        return self.cached("prose", lambda: prompts.prose_reader(self.cfg, self.root, self.state["prose_commit"], self.prose_names()))
 
     def gate_runs(self, gate):
         producer = pipeline.producer_of(gate)
@@ -308,7 +335,7 @@ class Round:
         text, unresolved, warnings = prompts.render_prompt(
             self.cfg, self.root, name, self.round_context(), step_ctx,
             project_ctx=prompts.project_context(self.cfg, remaining=self.project_remaining()),
-            prose_commit=st["prose_commit"], gate_runs=bool(gate) and self.gate_runs(gate))
+            prose_commit=st["prose_commit"], gate_runs=bool(gate) and self.gate_runs(gate), prose=self.prose())
         if write:
             procs.write_text(self.abs(f"{self.paths['prompts']}/{name}-{attempt}.txt"), text)
             producer = pipeline.producer_of(name)
@@ -323,7 +350,7 @@ class Round:
         return text, unresolved, warnings
 
     def project_remaining(self):
-        return round(float(self.cfg["budget"]) - self.project_spend()["total_usd"], 2)
+        return round(float(self.cfg["budget"]) - self.cached("project_spend", self.project_spend)["total_usd"], 2)
 
     def project_spend(self):
         total = {"agent_usd": 0.0, "driver_usd": 0.0, "owner_usd": 0.0, "living_usd": 0.0, "time_usd": 0.0, "total_usd": 0.0, "rounds": []}
@@ -462,7 +489,7 @@ class Round:
 
     def finish_crashed_prompt(self):
         pending = self.state.get("attempt_pending")
-        if pending and self.prompt_commit(pending["step"], pending["attempt"]) is None and not gitops.ref_exists(self.root, "MERGE_HEAD"):
+        if pending and self.prompt_commit(pending["step"], pending["attempt"]) is None and not self.merging():
             self.commit(f"{pending['step']} attempt {pending['attempt']} prompt", push=False)
 
     def reset_downstream(self, name):
@@ -512,7 +539,7 @@ class Round:
     def tree_state(self, discard):
         st = self.state
         pending = st.get("attempt_pending")
-        merging = gitops.ref_exists(self.root, "MERGE_HEAD")
+        merging = self.merging()
         expected = bool(st.get("merge_pending")) and pending and pending["step"] == "SPEC-TO-IMPLEMENTATION"
         notes = []
         if merging and not expected:
@@ -693,7 +720,7 @@ class Round:
                                      "judgment": self.judgment_counts()}
         self.save()
         self.commit(f"{name} attempt {attempt} prompt", push=False)
-        if st.get("merge_pending") and name == "SPEC-TO-IMPLEMENTATION" and not gitops.ref_exists(self.root, "MERGE_HEAD"):
+        if st.get("merge_pending") and name == "SPEC-TO-IMPLEMENTATION" and not self.merging():
             gitops.git(self.root, "merge", "--no-commit", "--no-ff", st["merge_pending"]["target_sha"], check=False)
         return attempt
 
@@ -841,7 +868,7 @@ class Round:
                 return self.upstream(step, attempt, obj)
             return self.blocked(step, attempt, obj)
         if merge:
-            findings += checks.l3_unmerged(self.root)
+            findings += checks.l3_unmerged(self.root, conflicted)
         spec = self.spec()
         remaining = list(snapshot)
         if st.get("tests_frozen_at") and step != "SPEC-TO-TESTS":
@@ -851,12 +878,16 @@ class Round:
         allowed = self.step_context(step, attempt)["write_paths"]
         f1, r1 = checks.m1_strays(self.cfg, self.root, self.paths, allowed, remaining, merge_tree=merge_tree, exempt=specguard.spec_files(self.root))
         findings += f1
-        if not [f for f in findings if f["id"] == "L3"]:
+        unresolved = bool([f for f in findings if f["id"] == "L3"])
+        if not unresolved:
             self.commit_work(step, attempt, merge)
+            if merge:
+                st["merge_pending"] = None
+                self.history(f"{step} attempt {attempt}: merge commit made; later attempts are normal")
         artifact_errors = self.s1(step, spec)
         if artifact_errors:
             findings.append(checks.finding("S1", "\n".join(artifact_errors), "the artifact is missing or invalid", "write the artifact as the contract says"))
-        if not artifact_errors and "M3" in pipeline.checks_for(step):
+        if not artifact_errors and not unresolved and "M3" in pipeline.checks_for(step):
             findings += checks.m3_verify(self.cfg, self.harness, spec)
         if not [f for f in findings if f["blocking"]] and "M5" in pipeline.checks_for(step):
             findings += checks.m5_suite(self.cfg, self.harness)
@@ -902,9 +933,7 @@ class Round:
             self.complete(step)
 
     def commit_work(self, step, attempt, merge):
-        gitops.git(self.root, "add", "-A")
-        if merge or not gitops.git_ok(self.root, "diff", "--cached", "--quiet"):
-            gitops.git(self.root, "commit", "-q", "--no-verify", "-m", f"round {self.id}: {step} attempt {attempt} work")
+        self.commit(f"{step} attempt {attempt} work", push=False, merge=merge)
 
     def s1(self, step, spec):
         s = pipeline.step(step)
