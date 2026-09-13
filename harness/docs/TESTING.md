@@ -17,7 +17,7 @@ Run the suite from the repository root with `py -3.13 -m pytest`; `-m "not slow"
 `fixtures.Repo` builds a throwaway repository with that spec, the toy project (`src/toy/text.py`, `tests/toy/`), a copy of the runner and an accepted baseline; `add_origin`, `clone` and `view` add a bare origin, another machine and a worktree view.
 `stub_agent.py` is the fake agent: it parses the contract lines, writes canned artifacts from `fixtures/canned/`, and answers per `STUB_MODE` or `STUB_SCRIPT`.
 Stub modes: producers `pass dispute deferred needs_owner upstream blocked garbage fence prose_wrapped commit stray touch_tests break rewrite_judgment edit_spec big slow resolve bad_artifact replay`; gates `pass pass_nb fail uphold withdraw q_uphold q_withdraw judgment inconsistent dirty garbage fence`.
-`Repo.play(until, modes, env, auto_review)` drives next, stub and record in-process to a step; a full stub round takes about fifteen seconds on this machine.
+`Repo.play(until, modes, env, auto_review)` drives next, stub and record in-process to a step; a full stub round takes about ten seconds and the whole suite about six and a half minutes on this machine, most of it git subprocesses.
 
 ## Baseline procedure
 

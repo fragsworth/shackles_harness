@@ -1,6 +1,6 @@
 # INDEX
 
-One line per topic: `alias, alias -> path`; paths are relative to this folder.
+One line per topic: aliases, an arrow, then paths relative to this folder.
 
 process, rules, checkpoints, disputes, costs, invariants -> docs/PROCESS.md
 driving a round, spawning, record, recovery, headless -> docs/DRIVER.md
@@ -11,7 +11,7 @@ steps, pipeline, mechanical check ids -> src/shackles/pipeline.py, src/shackles/
 contracts, result JSON, verdict JSON, process instructions -> src/shackles/plumbing/, src/shackles/contract.py
 schemas, artifacts, STATE -> src/shackles/schemas.py
 prose, prompts, rendering -> locked_prose/, src/shackles/render.py, src/shackles/prompts.py
-rounds, archives, index, state machine -> archives/rounds/, src/shackles/round.py
+rounds, archives, index, state machine -> archives/, src/shackles/round.py
 landing, claim, worktrees, sync_main -> src/shackles/landing.py
 costs, budgets, living charge -> src/shackles/ledger.py
 owner log, quotes, hook -> src/shackles/owner.py, src/owner_log_hook.py, ../.claude/settings.json
