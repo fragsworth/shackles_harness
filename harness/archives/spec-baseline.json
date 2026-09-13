@@ -1,9 +1,10 @@
 {
-  "accepted_at": "2026-09-13T07:29:30Z",
-  "accepted_commit": "9a13bb29f247754ad42254042c2a52506dac55b1",
-  "note": "bootstrap: placeholder rename",
-  "spec_yaml": "40f5360823daae7d7cfd2225a503746757b758d9acdb092d6c3a3bb4a1492513",
+  "accepted_at": "2026-09-13T14:48:28Z",
+  "accepted_commit": "2db4ecf5f7059f28860a3dd0fec9cdb3b1952469",
+  "note": "owner: add SPEC.md to the spec",
+  "spec_yaml": "26bcbec30769ac758150245165d241202db2639e3d8b868b8ed6de1c907502ac",
   "files": {
+    "SPEC.md": "433fd85d4dcb3705f2ef02ed5a567fc67461b52ac3beb49803fa7aea47356294",
     "harness/AGENTS.md": "0b22bc86d2c3027113e5d10413e2a0aa122e0078702486c78f745e2a4d15b82e",
     "harness/project.yaml": "f88659d20379634297cbab0506a8a71f1ef7c4d82d8e61b90422223855d45247",
     "harness/subAgents.yaml": "42d611cdb0541604fa449adc7e3ff03e1c70239bf86f9664688558cdb03ad992",
