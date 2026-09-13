@@ -163,6 +163,18 @@ def test_step_context_write_paths_and_inputs():
     assert paths["history"] in pm["inputs"] and "docs/TODO.md" in pm["inputs"]
 
 
+def test_step_context_minimum_shares_are_filtered_to_the_steps_present():
+    """PLAN-AGENTS sees the owner's floors for the producers present and for the producers whose LLM gate runs, never the mechanical gate's (R3-m4)."""
+    shares = {"work": {"CHAT-TO-PLAN": 0.05, "TESTS-TO-SUITE": 0.1}, "gates": {"CHAT-TO-PLAN": 0.02, "PLAN-AGENTS": 0.03, "TESTS-TO-SUITE": 0.1}}
+    data = dict(configmod.DEFAULTS, gates={"CHAT-TO-PLAN-GATE": 1, "PLAN-AGENTS-GATE": 1}, defaultShares=shares)
+    cfg = configmod.Config(os.path.join("r", "harness"), data, {}, [], fixtures.ROSTER)
+    paths = cfg.round_paths(1)
+    ctx = prompts.step_context(cfg, "PLAN-AGENTS", 1, paths, "wt", "h")
+    assert ctx["minimum_shares"] == {"work": {"CHAT-TO-PLAN": 0.05, "TESTS-TO-SUITE": 0.1}, "gates": {"PLAN-AGENTS": 0.03}}
+    ctx = prompts.step_context(cfg, "PLAN-AGENTS", 1, paths, "wt", "h", overrides=["TESTS-TO-SUITE"])
+    assert ctx["minimum_shares"] == {"work": {"CHAT-TO-PLAN": 0.05}, "gates": {"PLAN-AGENTS": 0.03}}
+
+
 def test_step_context_says_where_the_round_goes_next():
     cfg = configmod.Config(os.path.join("r", "harness"), dict(configmod.DEFAULTS), {}, [], fixtures.ROSTER)
     paths = cfg.round_paths(1)

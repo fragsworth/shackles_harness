@@ -183,6 +183,10 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
                              else "the round pauses for the owner; their answer returns to you as a finding")
     after_pass = f"{advances(pipeline.next_after(name))}{review}" if s.kind == "gate" else "none"
     verify = spec.get("verify") or "none"
+    defaults = cfg.get("defaultShares") or {}  # the owner's floors, filtered to the steps present: no gate share for a gate that never runs
+    rows = [r for r in step_table(cfg, overrides) if not r["overridden"]]
+    minimum_shares = {"work": {r["step"]: defaults["work"][r["step"]] for r in rows if r["step"] in (defaults.get("work") or {})},
+                      "gates": {r["step"]: defaults["gates"][r["step"]] for r in rows if r["gate_runs"] and r["step"] in (defaults.get("gates") or {})}}
     ctx = {
         "name": name, "kind": s.kind, "attempt": attempt, "budget": round(budget, 2), "budget_cap": round(budget_cap, 2),
         "max_turns": cfg["maxTurnsPerRun"], "wall_clock_hours": cfg["maxRunWallClockHours"], "retry_cost": round(retry_cost, 2),
@@ -197,7 +201,7 @@ def step_context(cfg, name, attempt, paths, worktree, harness_root, spec=None, b
         "next_finding_id": next_finding_id, "after_done": after_done, "after_needs_owner": after_needs_owner,
         "after_pass": after_pass, "verify": verify, "verify_timeout": verify_timeout or spec.get("verifyTimeoutSeconds") or cfg["verifyTimeoutSeconds"],
         "suite_command": cfg["suiteCommand"], "carry_forward": list(cfg["carryForwardFiles"]),
-        "sibling_paths": list(sibling_paths) or "none", "changed_tests": list(changed_tests) or "none",
+        "sibling_paths": list(sibling_paths) or "none", "changed_tests": list(changed_tests) or "none", "minimum_shares": minimum_shares,
     }
     return ctx
 
