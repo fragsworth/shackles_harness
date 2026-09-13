@@ -1,6 +1,7 @@
 """One round in a single checkout (--no-branch), driven in-process with the stub."""
 import json
 import os
+import re
 
 import pytest
 
@@ -218,6 +219,21 @@ def test_full_round_every_gate_enabled(tmp_path):
     assert res.json["main_synced"] is True and res.json["status"] == "finished"
     assert_round_files(r, gates_on=True)
     assert r.dirty() == ""
+    h = r.read("harness/archives/rounds/0001/HISTORY.md")
+    assert h.index("PLAN-TO-SPEC-GATE attempt 1: PASS") < h.index("CHECKPOINT review at PLAN-TO-SPEC-GATE") < h.index("RESUME approve"), "R3-n5"
+
+
+def test_gate_prompt_retry_cost_uses_the_producers_rung(tmp_path):
+    """The producer's prompt and its gate's name the same retry cost: the producer's budget plus the producer's spawnCost (R3-n6)."""
+    r = Repo(tmp_path, gates=ALL_GATES)
+    r.start()
+    res = r.play(until="PLAN-TO-SPEC", env={"STUB_RUNG": "low"})
+    assert res.json["agent"] == "low"
+    producer_prompt = open(res.json["prompt_file"], encoding="utf-8").read()
+    res = r.play(until="PLAN-TO-SPEC-GATE")
+    assert res.json["agent"] == "max", "the gate runs on another rung than its producer"
+    cost = re.search(r"Retry cost ([0-9.]+)\.", producer_prompt).group(1)
+    assert f"A FAIL costs ${cost} (the producer's retry)" in open(res.json["prompt_file"], encoding="utf-8").read()
 
 
 def test_full_round_every_gate_disabled_and_delegation(tmp_path):

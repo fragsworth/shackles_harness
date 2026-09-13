@@ -20,7 +20,7 @@ RESUME = {
     "hard-stop": ["approve", "abandon"], "spec-edit": ["approve", "abandon"], "upstream-plan": ["approve", "abandon"],
     "approval": ["approve", "delegate", "abandon"], "infra": ["approve", "override", "abandon"],
 }
-HINTS = {"approve": 'approve --quote "<the owner\'s words>"', "delegate": 'delegate [--through STEP] --quote "<words>"',
+HINTS = {"approve": 'approve --quote "<the owner\'s words>"', "delegate": 'delegate --quote "<words>"',
          "answer": 'answer --text "<the answer>" --quote "<words>"', "override": 'override --steps A,B --quote "<words>"',
          "abandon": 'abandon --reason "<why>" --quote "<words>"'}
 
@@ -52,6 +52,7 @@ class Round:
         state_path = self.abs(self.paths["state"])
         self.state = procs.read_json(state_path) if os.path.exists(state_path) else None
         self.notes = []
+        self.checkpoint_entry = None  # the CHECKPOINT line for HISTORY, written by save() after the attempt entry that raised it
         self._prose_names = None
         self._cache = {}
 
@@ -102,6 +103,9 @@ class Round:
         errors = schemas.validate(self.state, schemas.SCHEMAS["STATE"], "STATE")
         if errors:
             raise RunnerError("STATE invalid: " + "; ".join(errors))
+        if self.checkpoint_entry:
+            self.history(self.checkpoint_entry)
+            self.checkpoint_entry = None
         procs.write_json(self.abs(self.paths["state"]), self.state)
 
     def history(self, text):
@@ -331,7 +335,7 @@ class Round:
         spec = self.spec()
         return prompts.step_context(
             self.cfg, name, attempt, self.paths, self.root, self.harness, spec=spec, budget=budget,
-            budget_cap=ledger.budget_cap(self.cfg, budget), retry_cost=ledger.retry_cost(self.cfg, producer_budget, rung[1]),
+            budget_cap=ledger.budget_cap(self.cfg, budget), retry_cost=ledger.retry_cost(self.cfg, producer_budget, self.rung_for(producer)[1]),
             rung=rung, gate_runs=bool(gate) and self.gate_runs(gate), overrides=st["overrides"], delegated=self.delegated(),
             findings=findings, carried=st["carried"], previous=previous, question=question, conflicts=conflicts,
             next_finding_id=self.next_finding_id(), frozen=bool(st.get("tests_frozen_at")), sibling_paths=st.get("sibling_paths") or [],
@@ -405,7 +409,7 @@ class Round:
         ledger.append(st, step, st["attempts"].get(step, 0), ledger.owner_checkpoint_cost(self.cfg), "owner", f"checkpoint {kind}")
         st["checkpoint"]["message"] = self.checkpoint_message()
         st["undefined_at_checkpoint"] = self.judgment_counts()["undefined"]
-        self.history(f"CHECKPOINT {kind} at {step}\n\n{st['checkpoint']['message']}")
+        self.checkpoint_entry = f"CHECKPOINT {kind} at {step}\n\n{st['checkpoint']['message']}"
 
     def resume_commands(self, kind):
         runner = f"py -3.13 {procs.quoted(os.path.join(self.harness, 'src', 'run.py'))} --root {procs.quoted(self.root)}"
@@ -1122,10 +1126,11 @@ class Round:
         for f in obj.get("findings") or []:
             self.add_finding(producer, f, "gate", attempt)
         jc = obj.get("judgment_calls") or {}
+        suffix = f" (via runner, {step}-{attempt})"
         for key in ("defined", "undefined"):
-            lines = [l for l in (jc.get(key) or []) if str(l).strip()]
-            if lines:
-                procs.append_text(self.abs(self.paths[key]), "".join(f"- {l} (via runner, {step}-{attempt})\n" for l in lines))
+            lines = [str(l).strip() for l in (jc.get(key) or []) if str(l).strip()]
+            if lines:  # a gate that copied the file's format already ends its line with the suffix
+                procs.append_text(self.abs(self.paths[key]), "".join(f"- {l}" + ("" if re.search(r"\(via runner, [^()]*\)$", l) else suffix) + "\n" for l in lines))
         rel = f"{self.paths['findings']}/{step}-{attempt}.json"
         self.write_findings(rel, obj)
         needs = obj.get("needs_owner") or {}
@@ -1314,7 +1319,7 @@ class Round:
                 "checkpoint": st.get("checkpoint"), "attempts": st["attempts"], "failures": st["failures"], "round_retries": st["round_retries"],
                 "spend": self.spend(), "living_preview_usd": living, "judgment_calls": self.judgment_counts(),
                 "undefined_tail": self.undefined_tail(), "undefined_file": self.abs(self.paths["undefined"]),
-                "hard_stop": ledger.hard_stop(self.cfg, st), "branch": st["branch"], "worktree": self.root, "spec_edits": st["spec_edits"]}
+                "hard_stop": ledger.hard_stop(self.cfg, st), "branch": st["branch"], "root": self.root, "spec_edits": st["spec_edits"]}
 
     def check_payload(self):
         st = self.state

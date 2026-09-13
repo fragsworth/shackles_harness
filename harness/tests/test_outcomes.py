@@ -180,6 +180,8 @@ def test_blocked_checkpoint_and_answer(tmp_path):
     res = r.play(modes={"PLAN-TO-SPEC:1": "blocked"})
     assert res.json["kind"] == "checkpoint" and res.json["checkpoint"]["kind"] == "blocked" and stub_agent.BLOCKED_NOTES in res.json["message"]
     assert r.state()["failures"]["PLAN-TO-SPEC"] == 1
+    h = history(r)
+    assert h.index("PLAN-TO-SPEC attempt 1: BLOCKED") < h.index("CHECKPOINT blocked at PLAN-TO-SPEC"), "the attempt entry precedes the checkpoint it raised (R3-n5)"
     assert r.run("answer", "--text", "only whisper", "--quote", "only whisper").code == 0
     res = r.next()
     assert res.json["step"] == "PLAN-TO-SPEC" and res.json["attempt"] == 2 and "only whisper" in open(res.json["prompt_file"], encoding="utf-8").read()

@@ -82,7 +82,8 @@ Routing findings: `U1` (UPSTREAM, attached to the target), `B1` (BLOCKED), `O1` 
 
 Checkpoint kinds: `review` (after a `checkpointsAfter` step), `question` (NEEDS-OWNER upheld, or the gate disabled and not delegated), `blocked`, `failure-limit`, `round-limit`, `hard-stop`, `spec-edit` (before LANDING, never skipped), `upstream-plan`, `approval` (the plan changed), `infra`.
 Every checkpoint message carries the spend versus the quote, the counts of defined and undefined judgment calls, the undefined lines added since the last checkpoint with the file's absolute path, and the exact resume commands.
-`approve` continues; at `failure-limit` it resets that step's failures, at `spec-edit` it accepts the baseline on the branch, at `upstream-plan` it needs an edited PLAN.json, at `question` or `blocked` it means "proceed on your stated assumption".
+`approve` continues; at `failure-limit` it resets that step's failures, at `spec-edit` it accepts the baseline on the branch, at `upstream-plan` it needs an edited PLAN.json, at `question` it means "proceed on your stated assumption", and at `blocked` it says the same words although a BLOCKED producer stated no assumption, so `answer --text` or `override` is the natural resume there.
+The CHECKPOINT entry reaches HISTORY after the attempt entry that raised it (`save` writes it).
 `delegate` is approve plus delegation; delegation skips only `review` checkpoints, and `--through STEP` skips those at or before STEP, where STEP may name the producer or its gate (`PLAN-TO-SPEC` and `PLAN-TO-SPEC-GATE` skip the same reviews); a `through` that is absent, null or empty (in the plan or on the command line) skips every review, and one naming no step is refused.
 `answer --text T` turns the text into finding `O1` for the producer of the checkpoint, which runs again with it.
 `override --steps A,B` skips overridable steps not yet accepted, at any time; at a checkpoint it resumes the round when the checkpoint's own step is now overridden, otherwise the checkpoint stands and `approve` follows; `abandon --reason R` tags `round/NNNN-abandoned` and writes the index line, before landing only.
@@ -139,6 +140,7 @@ Landing conflicts converge because the merge attempt is measured against the aut
 
 `spec.yaml` lists the owner's files; `archives/spec-baseline.json` holds their accepted hashes (BOM stripped, newlines normalized) and `archives/spec-changes.jsonl` one line per acceptance.
 `tests/test_spec_baseline.py` fails on any drift with the categorized list, the diff and the review instruction; `start` refuses drift unless `--accept-spec`.
+`spec accept` rewrites the baseline and appends the audit line in the working tree and prints `head_at_accept`, the HEAD it was accepted at: the acceptance itself lands in the next commit, so a later `spec diff` (against that HEAD) shows the accepted change once more.
 A round that edits a spec file keeps the edit; HISTORY shows the fenced diff, the branch carries a provisional acceptance of the baseline (so the guard stays green when M5 and L2 run the suite on the branch, and an edit undone later needs no approval), and the owner approves at the `spec-edit` checkpoint, which re-accepts the baseline with their words.
 Nothing mechanical depends on the wording of the prose; the mechanics tests run on a generated fixture spec.
 

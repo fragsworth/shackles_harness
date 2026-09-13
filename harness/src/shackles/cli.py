@@ -52,7 +52,7 @@ def cmd_config(args, root):
 def cmd_spec(args, root):
     if args.action == "accept":
         baseline = specguard.accept(root, args.note or "")
-        emit({"accepted": True, "commit": baseline["accepted_commit"], "files": len(baseline["files"])})
+        emit({"accepted": True, "head_at_accept": baseline["accepted_commit"], "files": len(baseline["files"])})  # the acceptance lands in the next commit
         return EXIT_OK
     result = specguard.check(root)
     if args.action == "diff":

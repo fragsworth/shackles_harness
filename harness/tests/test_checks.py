@@ -219,6 +219,16 @@ def test_claimed_judgment_calls_are_compared_with_the_files(tmp_path):
     assert res.code == 0 and not any("message claims" in w for w in res.json["warnings"])
 
 
+def test_gate_line_already_suffixed_is_not_suffixed_twice(tmp_path):
+    r = Repo(tmp_path, gates={"PLAN-AGENTS-GATE": 1})
+    r.start()
+    r.play(until="PLAN-AGENTS-GATE")
+    msg = {"verdict": "PASS", "findings": [], "judgment_calls": {"undefined": ["PRE-SUFFIXED (via runner, PLAN-AGENTS-GATE-1)", "PLAIN"]}}
+    assert r.record("PLAN-AGENTS-GATE", 1, msg).code == 0
+    text = r.read(f"{FOLDER}/UNDEFINED_JUDGMENT_CALLS.md")
+    assert "- PRE-SUFFIXED (via runner, PLAN-AGENTS-GATE-1)\n- PLAIN (via runner, PLAN-AGENTS-GATE-1)\n" in text and text.count("(via runner") == 2, "R3-n1"
+
+
 def test_gate_verdict_is_authoritative(tmp_path):
     r = Repo(tmp_path, gates=ALL_GATES)
     r.start()
