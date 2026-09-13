@@ -11,5 +11,6 @@ The bullets below are invariants.
 * {{ plumbing.PROCESS-INSTRUCTIONS }} refers to the mechanical steps agents must follow given their current task. These steps never require judgment calls.
 
 ## JUDGMENT CALLS
-* A judgment call is a choice that impacts behavior and that two sensible agents could make differently. AGENTS.md and locked_prose/ may ask you for one; that is a DEFINED JUDGMENT CALL. Any other is an UNDEFINED JUDGMENT CALL.
+* A judgment call is a choice that impacts behavior and that two sensible agents could make differently. AGENTS.md and locked_prose/ may define them; that is a DEFINED JUDGMENT CALL, expected and logged. Any other is an UNDEFINED JUDGMENT CALL.
 * If you ever feel like you are making an UNDEFINED JUDGMENT CALL outside of what was defined by AGENTS.md or locked prose, append a small record with context inside your round's UNDEFINED_JUDGMENT_CALLS.md file and proceed with what is most sensible. Record DEFINED JUDGMENT CALLS the same way in DEFINED_JUDGMENT_CALLS.md.
+* A blanket ask such as "do what is sensible" defines how you choose, not the line between the two: when the spec, plan, code, tests, or docs conflict or fall silent on something that impacts behavior, the judgment call is UNDEFINED even though the prose told you to be sensible.
