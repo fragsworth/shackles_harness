@@ -168,6 +168,22 @@ def test_record_agent_names_the_rung_that_ran(tmp_path):
     assert res.code == 0 and "(rung" not in e["note"] and not any("ran on rung" in w for w in res.json["warnings"]), "no note when the rungs agree"
 
 
+def test_start_agent_forces_the_rung_and_tells_the_planner(tmp_path):
+    """start --agent names the rung in every action and in the PLAN-AGENTS prompt, so record --agent is never needed (R4-n7, DRIVER.md)."""
+    r = repo(tmp_path)
+    r.start(extra=["--agent", "low"])
+    a = r.next().json
+    assert a["agent"] == "low" and a["model_alias"] == "sonnet"
+    assert "the runner runs and prices each at it): low\n" in open(a["prompt_file"], encoding="utf-8").read()
+    stub_agent.perform(a["prompt_file"], "pass", {})
+    res = r.record("PLAN-AGENTS", 1, {"status": "DONE", "notes": "ran on the forced rung"}, cost=None, extra=["--tokens", "1000", "--agent", "low"])
+    assert res.code == 0 and not any("ran on rung" in w for w in res.json["warnings"])
+    assert r.next().json["agent"] == "low", "the forced rung beats the plan's"
+    r2 = repo(tmp_path / "free")
+    r2.start()
+    assert "the runner runs and prices each at it): none\n" in open(r2.next().json["prompt_file"], encoding="utf-8").read()
+
+
 def assert_round_files(r, gates_on):
     st = r.state()
     folder = "harness/archives/rounds/0001"

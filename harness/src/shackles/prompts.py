@@ -10,7 +10,7 @@ CHAT_GATE_SENTENCE = ("CHAT-TO-PLAN-GATE is mechanical: start validates PLAN.jso
                       "recorded in it.")
 ROUND_KEYS = ("id", "number", "folder", "worktree", "harness_root", "branch", "base_commit", "prose_commit", "plan",
               "budget", "spend", "remaining", "status", "step", "history", "postmortems", "postmortem_paths",
-              "judgment_files", "judgment_calls", "owner_log", "todos", "clarifications", "steps", "runner")
+              "judgment_files", "judgment_calls", "owner_log", "todos", "clarifications", "steps", "runner", "agent_override")
 BEFORE_ROUND = ("history", "postmortems", "postmortem_paths", "remaining", "todos", "clarifications", "steps", "runner")
 
 
@@ -245,7 +245,7 @@ def fixture_contexts(cfg, root, name, attempt=1):
         plan=plan_text({"summary": "fixture plan", "scope": ["a"], "validation": ["b"], "non_goals": ["c"], "quote_usd": 100}),
         budget=100, spend=0, remaining=100, status="active", step=name, steps=step_table(cfg),
         judgment_files=[cfg.abs_path(paths["defined"]), cfg.abs_path(paths["undefined"])],
-        judgment_calls={"defined": 0, "undefined": 0}, owner_log="none")
+        judgment_calls={"defined": 0, "undefined": 0}, owner_log="none", agent_override=cfg.get("agentOverride"))
     gate = pipeline.gate_of(name) if pipeline.step(name).kind != "gate" else name
     gate_runs = bool(gate) and cfg.gate_enabled(gate)
     step_ctx = step_context(cfg, name, attempt, paths, root, cfg.harness_root, spec=spec, budget=10.0, budget_cap=60.0,

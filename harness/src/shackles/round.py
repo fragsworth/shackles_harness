@@ -314,7 +314,8 @@ class Round:
             judgment_calls={k: "\n".join(self.judgment_lines(k)) or "none" for k in ("defined", "undefined")},
             owner_log=procs.read_text(slice_path) if os.path.exists(slice_path) else "none",
             todos=self.carry_text(carry[0]) if carry else "none", clarifications=self.carry_text(carry[1]) if len(carry) > 1 else "none",
-            steps=prompts.step_table(self.cfg, st["overrides"]), runner=os.path.join(self.harness, "src", "run.py"))
+            steps=prompts.step_table(self.cfg, st["overrides"]), runner=os.path.join(self.harness, "src", "run.py"),
+            agent_override=st.get("agent_override") or self.cfg.get("agentOverride"))
 
     def step_context(self, name, attempt):
         st, s = self.state, pipeline.step(name)
