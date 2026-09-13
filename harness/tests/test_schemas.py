@@ -51,6 +51,10 @@ def test_result_and_findings_schemas():
     assert schemas.validate({"status": "OK"}, schemas.SCHEMAS["RESULT"], "RESULT") == ["RESULT: status should be one of DONE, NEEDS-OWNER, UPSTREAM, BLOCKED, got 'OK'"]
     assert schemas.validate({"status": "DONE", "resolutions": {"F1": {"status": "maybe"}}}, schemas.SCHEMAS["RESULT"], "RESULT") == \
         ["RESULT: resolutions.F1.status should be one of fixed, disputed, deferred, got 'maybe'"]
+    assert schemas.validate({"status": "DONE", "judgment_calls": {"defined": ["a line"], "undefined": 0}}, schemas.SCHEMAS["RESULT"], "RESULT") == [], \
+        "a producer that answers in the gate's list shape is not an infrastructure error"
+    assert schemas.validate({"status": "DONE", "judgment_calls": {"defined": "1"}}, schemas.SCHEMAS["RESULT"], "RESULT") == \
+        ["RESULT: judgment_calls.defined should be int or list, got str"]
     f = {"verdict": "FAIL", "findings": [{"id": "F1", "quote": "q", "reason": "r", "suggestion": "s", "blocking": True}]}
     assert schemas.validate(f, schemas.SCHEMAS["FINDINGS"], "FINDINGS") == []
     assert schemas.validate({"verdict": "PASS", "findings": [{"id": "F1"}]}, schemas.SCHEMAS["FINDINGS"], "FINDINGS") == [

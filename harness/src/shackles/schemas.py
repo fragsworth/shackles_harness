@@ -118,7 +118,8 @@ SCHEMAS = {
             "notes": STR, "question": STR, "assumption": STR, "target": STR, "narrow": STR,
             "resolutions": {"type": "dict", "additionalProperties": {"type": "dict", "required": ["status"], "properties": {
                 "status": {"type": "str", "enum": list(contract.RESOLUTIONS)}, "reason": STR}}},
-            "judgment_calls": {"type": "dict", "properties": {"defined": INT, "undefined": INT}},
+            "judgment_calls": {"type": "dict", "properties": {"defined": {"type": ["int", "list"]}, "undefined": {"type": ["int", "list"]}},
+                               "doc": "counts; a gate-shaped list of lines is tolerated"},
         },
     },
     "FINDINGS": {

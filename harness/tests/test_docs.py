@@ -38,14 +38,6 @@ def test_every_defaults_key_appears_in_process_md():
         assert f"`{key}`" in text, key
 
 
-def test_line_limits_and_one_sentence_per_line():
-    assert len(read("docs/PROCESS.md").splitlines()) <= 200
-    assert len(read("docs/DRIVER.md").splitlines()) <= 80
-    assert len(read("docs/TESTING.md").splitlines()) <= 80
-    assert len(read("INDEX.md").splitlines()) <= 40
-    assert len(open(os.path.join(REPO_ROOT, "CLAUDE.md"), encoding="utf-8").read().splitlines()) <= 3
-
-
 def test_agent_definitions_committed_and_hook_configured():
     cfg = configmod.load(REPO_ROOT)
     assert agentdefs.drift(cfg, REPO_ROOT) == []

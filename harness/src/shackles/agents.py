@@ -134,6 +134,8 @@ def probe_cli(cfg, root):
         proc = procs.run(argv, cwd=root, env=agent_env(cfg), timeout=300)
     except (RunnerError, OSError) as exc:
         return {"ok": False, "error": str(exc), "rung": rung_name}
+    finally:
+        procs.rmtree(folder)
     text, meta = parse_envelope(proc.out)
     obj = schemas.extract_json(text) if text else None
     ok = proc.ok and isinstance(obj, dict) and obj.get("ok") is True

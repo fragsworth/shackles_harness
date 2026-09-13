@@ -12,7 +12,8 @@ AUDIT = "harness/archives/spec-changes.jsonl"
 INSTRUCTION = (
     "Review the effects: run `doctor` (pipeline and prose-file consistency, unresolved tokens), "
     "`render --step` for the affected steps, PROCESS.md's wording-adjacent table; "
-    "a step, gate or artifact key change means `pipeline.py`; a config key change means `config.DEFAULTS`; "
+    "a step, gate or artifact key change means `pipeline.py` and the step names in `round.py`, `prompts.py`, `landing.py`, "
+    "`checks.py`, `config.py`, the stub and the fixtures; a config key change means `config.DEFAULTS`; "
     "then `spec accept --note \"<what you reviewed>\"` in the same commit."
 )
 

@@ -21,6 +21,7 @@ A round lives in `archives/rounds/NNNN/`, named by `roundPaths`; every file name
 Runner-owned round files, reverted when an agent changes them: `STATE.json`, `HISTORY.md`, `OWNER.log`, `PROMPTS/`, `RESULTS/`, `FINDINGS/`, `tests-archive/`.
 Agents write their artifact, the judgment-call files (append-only) and, for POSTMORTEM, the carry-forward files `docs/TODO.md` and `docs/CLARIFICATIONS.md`.
 `archives/rounds/index.jsonl` gets one line per finished or abandoned round; `.gitattributes` merges it with `merge=union`.
+The union attribute and the spec baseline are pinned to `harness/archives/` whatever `roundPaths.folder` or `archivesPath` say, so an owner who moves the rounds folder out of `archives/` moves the `.gitattributes` line with it.
 Prose is pinned at `prose_commit` (HEAD at start) and read with `git show`; config is read live from the worktree.
 Config layering is code `DEFAULTS` < `project.yaml` < `harness/local.yaml` (gitignored); `run.py config` prints the source of each key.
 A worktree round reads the copy of `harness/local.yaml` that `start` takes from the checkout it runs in; edit the copy to change the round's local config.
@@ -64,6 +65,7 @@ A prompt is `harness/AGENTS.md` verbatim, a blank line, then the rendered `<STEP
 The machine-readable lines are the last `STEP:`, `KIND:`, `ROUND:`, `ATTEMPT:`, `WORKTREE:`, `HARNESS:`, `ARTIFACT:`, `RESULT_FILE:`, `DIFF_FILE:`, `WRITE_PATHS:`, `FROZEN_PATHS:` and `MERGE_IN_PROGRESS:` lines of `src/shackles/plumbing/producer.txt` and `gate.txt`.
 A producer ends with `{"status": DONE|NEEDS-OWNER|UPSTREAM|BLOCKED, ...}` and a gate with `{"verdict": PASS|FAIL, "findings": [...], ...}` as `schemas.py` defines; the JSON is extracted from the whole message, the last fence, or the last balanced object.
 An invalid final message is saved raw, counted as an infrastructure error with its cost booked, and the same attempt is rerun; `infraRetries` invalid results at one attempt raise the `infra` checkpoint.
+The producer's `judgment_calls` are counts, and a gate-shaped list of lines is tolerated; the runner counts the files, not the message.
 The gate's verdict is authoritative: a PASS with blocking findings makes them non-blocking, a FAIL without a blocking finding keeps the findings as given, and either mismatch is one HISTORY line.
 
 ## Findings, disputes, settlement
@@ -147,7 +149,7 @@ The carry-forward files mirror POSTMORTEM's TODOs and CLARIFICATIONS; the runner
 
 ## Config keys
 
-`mainBranch`, `worktreeDir`, `pushAttempts`, `infraRetries`, `checkpointsAfter`, `ownerMinutesPerCheckpoint`, `minRunUsd`, `promptTokenWarn`, `postmortemFeedRounds`, `findingQuoteMaxChars`, `testFunctionPattern`, `suiteCommand`, `suiteTimeoutSeconds`, `gitTimeoutSeconds`, `agentCommand`, `agentTask`, `claudePath`, `gateToolFlags`, `producerToolFlags`, `scrubEnv`, `modelAliases`, `gitIdentity`, `envelopePrefixes`, `agentOverride` and `carryForwardFiles` are runner keys with defaults in `config.DEFAULTS`, overridable in `project.yaml` or `local.yaml`.
+`mainBranch`, `worktreeDir`, `pushAttempts`, `infraRetries`, `checkpointsAfter`, `ownerMinutesPerCheckpoint`, `minRunUsd`, `promptTokenWarn`, `postmortemFeedRounds`, `findingQuoteMaxChars`, `testFunctionPattern`, `suiteCommand`, `suiteTimeoutSeconds`, `agentCommand`, `agentTask`, `claudePath`, `gateToolFlags`, `producerToolFlags`, `scrubEnv`, `modelAliases`, `envelopePrefixes`, `agentOverride` and `carryForwardFiles` are runner keys with defaults in `config.DEFAULTS`, overridable in `project.yaml` or `local.yaml`.
 `budget`, `hardStopBudgetMultiple`, `lostValuePerHour`, `ownerHourlyRate`, `costToWaitForOwner`, `planCostPerWord`, `specCostPerWord`, `livingFileTokenCap`, `livingFileCostPerToken`, `livingFileCostPerTokenOverCap`, `livingFileBaseCost`, `testBaseCost`, `tokenBytes`, `maxRefactorOverhead`, `gates`, `defaultShares`, `livingSourcePaths`, `lockedProsePath`, `archivesPath`, `roundPaths`, `maxSimultaneousSubAgentsPerRound`, `maxRoundAttempts`, `maxFailuresBeforeStop`, `maxTurnsPerRun`, `maxRunWallClockHours`, `verifyTimeoutSeconds`, `gatesFraction`, `workFraction`, `estOutputFraction`, `driverUsdPerStep`, `subAgentsFile`, `maxAgent`, `gateAgent`, `systemTestAgent`, `shackles` and `currency` are the owner's keys, read with today's values as defaults.
 `maxRefactorOverhead` is enforced on the SPEC's declared `refactor` budgets; `maxSimultaneousSubAgentsPerRound` on AGENTS-PLAN's `subAgents`; `maxTurnsPerRun` is advisory text; `maxRunWallClockHours` is the headless timeout.
 

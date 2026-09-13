@@ -1,4 +1,5 @@
 """Test fixtures: the generated minimal spec, the toy project, throwaway repositories and origins."""
+import atexit
 import contextlib
 import io
 import json
@@ -46,7 +47,7 @@ COMMON = {
     "COMMON-GATE": "Fixture gate: PASS or FAIL. A FAIL costs {{ step.retry_cost }}.\n",
 }
 AGENTS_MD = "# harness/\n\nFixture AGENTS.md: the driver runs the runner; {{ plumbing.PROCESS-INSTRUCTIONS }} is inserted by it.\n"
-GITIGNORE = ".claude/worktrees/\nharness/OWNER.log\nharness/local.yaml\n__pycache__/\n*.pyc\n"
+GITIGNORE = ".claude/worktrees/\nharness/OWNER.log\nharness/local.yaml\n__pycache__/\n*.pyc\n.tmp-*\n"
 _clock = [0]
 
 
@@ -198,12 +199,21 @@ def build_repo(root, gates, config, spec):
     gitops.git(root, "commit", "-q", "-m", "base")
 
 
+def _remove_at_exit(folder):
+    try:
+        procs.rmtree(folder)
+    except OSError:
+        pass
+
+
 def template_repo(gates, config, spec):
-    """One built repository per distinct (gates, config, spec), copied for every test that asks for it."""
+    """One built repository per distinct (gates, config, spec), copied for every test that asks for it; removed at exit."""
     key = json.dumps([gates, config, spec], sort_keys=True, default=str)
     if key not in TEMPLATES:
         import tempfile
-        root = os.path.join(tempfile.mkdtemp(prefix="shackles-template-"), "repo")
+        folder = tempfile.mkdtemp(prefix="shackles-template-")
+        atexit.register(_remove_at_exit, folder)
+        root = os.path.join(folder, "repo")
         build_repo(root, gates, config, spec)
         TEMPLATES[key] = root
     return TEMPLATES[key]
