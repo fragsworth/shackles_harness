@@ -1,6 +1,7 @@
 """Every routing row: verdicts, disputes, questions, upstream, blocked, limits, infra, recovery."""
 import json
 import os
+import sys
 
 import pytest
 
@@ -26,10 +27,11 @@ def test_fail_reenters_with_findings_then_passes(tmp_path):
     text = open(res.json["prompt_file"], encoding="utf-8").read()
     assert '"id": "F1"' in text.replace('"id":"F1"', '"id": "F1"') and stub_agent.FAIL_REASON in text
     assert r.json(f"{FOLDER}/FINDINGS/PLAN-AGENTS-GATE-1.json")["verdict"] == "FAIL"
-    res = r.play(until="PLAN-TO-SPEC")
-    assert res.json["step"] == "PLAN-TO-SPEC"
+    res = r.play(until="PLAN-TO-SPEC", modes={"PLAN-AGENTS:2": "prose_wrapped"})
+    assert res.json["step"] == "PLAN-TO-SPEC", "prose around a message that carries resolutions is tolerated (R2-M1)"
     st = r.state()
     assert st["findings_ledger"]["F1"]["status"] == "fixed" and st["findings_ledger"]["F1"]["resolution"]["status"] == "fixed"
+    assert st["infra_errors"] == {}
     gate_prompt = r.read(f"{FOLDER}/PROMPTS/PLAN-AGENTS-GATE-2.txt")
     assert "Ids continue from F2" in gate_prompt and '"status":"fixed"' in gate_prompt
 
@@ -346,6 +348,39 @@ def test_in_round_spec_edit_is_flagged_and_checkpointed_even_when_delegated(tmp_
     assert r.run("spec", "status").json["clean"]
     res = r.play()
     assert res.json["kind"] == "done" and r.state()["landed_at"]
+
+
+GUARD_SUITE = [sys.executable, "src/run.py", "spec", "status"]  # the baseline guard as the permanent suite, as on the real repository
+PROSE = "harness/locked_prose/COMMON-OVERVIEW.txt"
+
+
+def test_spec_edit_keeps_the_branch_guard_green_until_the_owner_accepts(tmp_path):
+    r = Repo(tmp_path, config={"suiteCommand": GUARD_SUITE})
+    r.start(extra=["--delegate"])
+    res = r.play(modes={"SPEC-TO-IMPLEMENTATION:1": "edit_spec"})
+    assert res.json["kind"] == "checkpoint" and res.json["checkpoint"]["kind"] == "spec-edit", res
+    assert not r.exists(f"{FOLDER}/FINDINGS/CLEANUP-1.mechanical.json") and r.state()["failures"] == {}, "M5 at CLEANUP is green on the branch"
+    assert r.run("spec", "status").json["clean"] and r.dirty() == ""
+    audit = [json.loads(l) for l in r.read("harness/archives/spec-changes.jsonl").splitlines() if l.strip()]
+    assert "provisional" in audit[-1]["note"] and audit[-1]["changed"] == [PROSE]
+    assert r.run("approve", "--quote", "accept the prose edit").code == 0
+    assert "approved by the owner" in r.read("harness/archives/spec-changes.jsonl")
+    res = r.play()
+    assert res.json["kind"] == "done" and r.state()["landed_at"] and r.run("spec", "status").json["clean"]
+
+
+def test_spec_edit_undone_later_in_the_round_needs_no_approval(tmp_path):
+    r = Repo(tmp_path, config={"suiteCommand": GUARD_SUITE})
+    r.start(extra=["--delegate"])
+    before = r.read(PROSE)
+    res = r.play(until="CLEANUP", modes={"SPEC-TO-IMPLEMENTATION:1": "edit_spec"})
+    assert res.json["step"] == "CLEANUP" and r.state()["spec_edits"] == [PROSE]
+    r.write(PROSE, before)
+    rec = r.act(res.json, "pass")
+    assert rec.code == 0, rec
+    assert r.state()["spec_edits"] == [] and f"SPEC EDIT {PROSE} undone" in history(r)
+    res = r.play()
+    assert res.json["kind"] == "done" and r.state()["landed_at"] and r.run("spec", "status").json["clean"]
 
 
 def test_crash_recovery(tmp_path):

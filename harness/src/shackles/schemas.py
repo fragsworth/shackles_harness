@@ -219,22 +219,20 @@ def extract_json(text):
         except ValueError:
             continue
     decoder = json.JSONDecoder()
-    starts = [i for i, ch in enumerate(text) if ch == "{"]
-    for start in reversed(starts):
-        try:
-            obj, end = decoder.raw_decode(text, start)
-        except ValueError:
-            continue
-        if isinstance(obj, dict) and ("status" in obj or "verdict" in obj):
-            return obj
-    for start in starts:
+    objects, end = [], 0
+    for start in (i for i, ch in enumerate(text) if ch == "{"):
+        if start < end:
+            continue  # inside the object decoded last: nested, not top-level
         try:
             obj, end = decoder.raw_decode(text, start)
         except ValueError:
             continue
         if isinstance(obj, dict):
+            objects.append(obj)
+    for obj in reversed(objects):
+        if "status" in obj or "verdict" in obj:
             return obj
-    return None
+    return objects[-1] if objects else None
 
 
 def normalize_findings(obj, gate, attempt, next_id, withdrawn_quotes, max_chars):

@@ -1,6 +1,6 @@
 # DRIVER
 
-How a chat session drives one round on this machine; every command is `py -3.13 harness/src/run.py ...` from the repository root unless a worktree is named.
+How a chat session drives one round on this machine; every command is `py -3.13 harness/src/run.py ...` from the repository root unless a worktree is named, and carries `--root <repo>` whenever the shell's cwd may be another repository (a sandbox): without it the runner acts on the nearest ancestor of the cwd that holds `spec.yaml`.
 
 ## Before a round
 
@@ -8,7 +8,7 @@ Run `doctor` and read its warnings; errors block `start`.
 Run `render --step CHAT-TO-PLAN --raw` and follow that prompt: it names the inputs (history, TODO.md, CLARIFICATIONS.md, the last postmortems) and the plan contract.
 Converse with the owner, write `harness/DRAFT-PLAN.json` (schema PLAN), and set `presented_at` when you show the plan.
 Interpreting the owner's words is your judgment call: `approve`/`approved` means approved with checkpoints, `delegate`/`delegated` means no review checkpoints, `delegate through STEP` skips reviews up to STEP, `override` plus names skips those steps.
-Fill `approval` (`mode`, `through`, `overrides`, `words` verbatim) and run `start --plan harness/DRAFT-PLAN.json` (`--delegate [--through STEP]` sets delegation from the command line).
+Fill `approval` (`mode`, `through`, `overrides`, `words` verbatim) and run the `start --plan ...` command the CHAT-TO-PLAN prompt prints, which names the runner, `--root` and the draft absolutely (`--delegate [--through STEP]` sets delegation from the command line).
 A worktree round starts from `origin/<mainBranch>`: a gate flip or any other spec edit is committed, accepted with `spec accept` and pushed before `start`, which refuses otherwise; `harness/local.yaml` is copied into the worktree.
 `start` prints `worktree` and `runner`: from then on drive the round with that worktree's runner, `py -3.13 <worktree>/harness/src/run.py --root <worktree> ...`.
 

@@ -63,7 +63,7 @@ The prompt handed to a sub-agent is the file's entire content, unaltered, refere
 
 A prompt is `harness/AGENTS.md` verbatim, a blank line, then the rendered `<STEP>-OVERVIEW.txt` or `<GATE>.txt`; the process block is appended when the prose lacks the `plumbing.PROCESS-INSTRUCTIONS` token.
 The machine-readable lines are the last `STEP:`, `KIND:`, `ROUND:`, `ATTEMPT:`, `WORKTREE:`, `HARNESS:`, `ARTIFACT:`, `RESULT_FILE:`, `DIFF_FILE:`, `WRITE_PATHS:`, `FROZEN_PATHS:` and `MERGE_IN_PROGRESS:` lines of `src/shackles/plumbing/producer.txt` and `gate.txt`.
-A producer ends with `{"status": DONE|NEEDS-OWNER|UPSTREAM|BLOCKED, ...}` and a gate with `{"verdict": PASS|FAIL, "findings": [...], ...}` as `schemas.py` defines; the JSON is extracted from the whole message, the last fence, or the last balanced object.
+A producer ends with `{"status": DONE|NEEDS-OWNER|UPSTREAM|BLOCKED, ...}` and a gate with `{"verdict": PASS|FAIL, "findings": [...], ...}` as `schemas.py` defines; the JSON is extracted from the whole message, the last fence, or the last top-level balanced object that carries `status` or `verdict` (a nested resolution, ruling or `needs_owner` never wins).
 An invalid final message is saved raw, counted as an infrastructure error with its cost booked, and the same attempt is rerun; `infraRetries` invalid results at one attempt raise the `infra` checkpoint.
 The producer's `judgment_calls` are counts, and a gate-shaped list of lines is tolerated; the runner counts the files, not the message.
 The gate's verdict is authoritative: a PASS with blocking findings makes them non-blocking, a FAIL without a blocking finding keeps the findings as given, and either mismatch is one HISTORY line.
@@ -101,7 +101,7 @@ M1: changed paths outside WRITE_PATHS, the round folder and the spec files, or i
 M2: a change under `testPaths` after the tests froze is reverted; on a merge attempt a conflicted test is the non-blocking `T1` instead.
 M3: `SPEC.verify` runs from H under its timeout at SPEC-TO-IMPLEMENTATION and CLEANUP; M5: `suiteCommand` runs at CLEANUP (and as L2 at LANDING).
 M4: the judgment-call files only grew since the prompt commit; a rewrite is restored.
-E1: a change to a spec file is never reverted; its diff goes to HISTORY, the path to `spec_edits`, and the `spec-edit` checkpoint fires before LANDING.
+E1: a change to a spec file is never reverted; its diff goes to HISTORY, `spec_edits` lists the spec files that differ from `base_commit`, the branch's baseline is accepted provisionally, and the `spec-edit` checkpoint fires before LANDING.
 G1: a gate run that changed files is discarded as an infrastructure error.
 W1 and W2 are warnings: an overlapping sibling path, and a prompt over `promptTokenWarn` tokens.
 L1: the round conflicts with the landing target; L2: verify or the suite is red on the merged tree; L3: conflicted files were left unresolved.
@@ -136,7 +136,7 @@ Landing conflicts converge because the merge attempt is measured against the aut
 
 `spec.yaml` lists the owner's files; `archives/spec-baseline.json` holds their accepted hashes (BOM stripped, newlines normalized) and `archives/spec-changes.jsonl` one line per acceptance.
 `tests/test_spec_baseline.py` fails on any drift with the categorized list, the diff and the review instruction; `start` refuses drift unless `--accept-spec`.
-A round that edits a spec file keeps the edit; HISTORY shows the fenced diff and the owner approves it at the `spec-edit` checkpoint, which accepts the baseline on the branch.
+A round that edits a spec file keeps the edit; HISTORY shows the fenced diff, the branch carries a provisional acceptance of the baseline (so the guard stays green when M5 and L2 run the suite on the branch, and an edit undone later needs no approval), and the owner approves at the `spec-edit` checkpoint, which re-accepts the baseline with their words.
 Nothing mechanical depends on the wording of the prose; the mechanics tests run on a generated fixture spec.
 
 ## Wording-adjacent rules

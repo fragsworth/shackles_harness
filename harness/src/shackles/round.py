@@ -877,14 +877,7 @@ class Round:
         findings, reverted = [], []
         f4, r4 = checks.m4_judgment(self.root, prompt_commit or st["base_commit"], [self.repo_rel(self.paths["defined"]), self.repo_rel(self.paths["undefined"])])
         findings += f4
-        edits = checks.e1_spec_edits(self.root, st["base_commit"], specguard.spec_files(self.root))
-        for path, diff in edits.items():
-            if path not in st["spec_edits"] or st.get("spec_edit_hashes", {}).get(path) != procs.sha256_text(diff):
-                self.history(f"SPEC EDIT {path}\n\n```diff\n{diff}\n```")
-                st.setdefault("spec_edit_hashes", {})[path] = procs.sha256_text(diff)
-                st["spec_edits_approved"] = False
-            if path not in st["spec_edits"]:
-                st["spec_edits"].append(path)
+        self.e1(checks.e1_spec_edits(self.root, st["base_commit"], specguard.spec_files(self.root)))
         merge_tree = (st.get("merge_pending") or {}).get("automerge_tree") if merge else None
         conflicted = [self.repo_rel(p) for p in (st.get("merge_pending") or {}).get("conflicted") or []] if merge else []
         if status in ("UPSTREAM", "BLOCKED"):
@@ -964,6 +957,24 @@ class Round:
         else:
             self.accept_producer(step)
             self.complete(step)
+
+    def e1(self, edits):
+        """E1: spec-file edits are kept, `spec_edits` names the files that differ from base_commit, every new or changed diff goes
+        to HISTORY, and the branch's baseline is accepted provisionally, so the guard in the permanent suite (M5, L2) is green
+        until the owner re-accepts at the spec-edit checkpoint; the baseline files are not in the snapshot, so M1 never sees them."""
+        st = self.state
+        hashes = {path: procs.sha256_text(diff) for path, diff in edits.items()}
+        known = st.get("spec_edit_hashes") or {}
+        if hashes == known:
+            return
+        for path, diff in edits.items():
+            if hashes[path] != known.get(path):
+                self.history(f"SPEC EDIT {path}\n\n```diff\n{diff}\n```")
+        for path in known:
+            if path not in hashes:
+                self.history(f"SPEC EDIT {path} undone: the file is back at base_commit")
+        st["spec_edit_hashes"], st["spec_edits"], st["spec_edits_approved"] = hashes, sorted(hashes), False
+        specguard.accept(self.root, f"round {self.id}: provisional, pending the owner's spec-edit checkpoint; edited: {', '.join(sorted(hashes)) or 'none'}")
 
     def commit_work(self, step, attempt, merge):
         self.commit(f"{step} attempt {attempt} work", push=False, merge=merge)
@@ -1436,6 +1447,7 @@ def planning_contexts(cfg, root):
                 pms.append(rel)
     carry = list(cfg["carryForwardFiles"])
     round_ctx = prompts.empty_round_context(
+        worktree=os.path.abspath(root), harness_root=cfg.harness_root,
         history="\n".join(history) or "none", postmortem_paths=pms[-int(cfg["postmortemFeedRounds"]):] or "none",
         todos=dummy.carry_text(carry[0]) if carry else "none", clarifications=dummy.carry_text(carry[1]) if len(carry) > 1 else "none",
         steps=prompts.step_table(cfg), runner=os.path.join(cfg.harness_root, "src", "run.py"))

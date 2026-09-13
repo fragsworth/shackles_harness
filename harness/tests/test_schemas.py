@@ -81,6 +81,16 @@ def test_extract_json():
     assert schemas.extract_json('text {"other": 1}') == {"other": 1}
 
 
+def test_extract_json_prefers_the_top_level_object_over_nested_ones():
+    """A nested object with its own status key (a resolution, a ruling, needs_owner) never wins over the message's object."""
+    producer = {"status": "DONE", "notes": "n", "resolutions": {"F1": {"status": "fixed", "reason": "r"}, "F2": {"status": "disputed", "reason": "d"}}}
+    assert schemas.extract_json("Here is my final message:\n\n" + json.dumps(producer) + "\n\nThanks.") == producer
+    gate = {"verdict": "PASS", "findings": [], "rulings": {"F2": {"status": "withdrawn", "quote": "q"}}, "needs_owner": {"status": "upheld", "reason": "x"}}
+    assert schemas.extract_json("Verdict below.\n" + json.dumps(gate) + "\nDone.") == gate
+    assert schemas.extract_json('earlier {"status": "UPSTREAM"} and finally {"status": "DONE"} then a summary {"files": 3}') == {"status": "DONE"}
+    assert schemas.extract_json('{"a": {"status": "nested only"}}') == {"a": {"status": "nested only"}}, "the top-level object is the message"
+
+
 def norm(obj, withdrawn=(), next_id=1):
     return schemas.normalize_findings(json.loads(json.dumps(obj)), "X-GATE", 2, next_id, set(withdrawn), 20)
 

@@ -275,4 +275,7 @@ def test_render_command_on_a_round_has_no_side_effects(tmp_path):
     assert r.head() == head and r.dirty() == ""
     res = r.run("render", "--step", "CHAT-TO-PLAN")
     assert res.code == 0 and "STEP: CHAT-TO-PLAN" in res.json["prompt"] and "# TODO" in res.json["prompt"]
-    assert "harness/DRAFT-PLAN.json: JSON object with" in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"
+    harness = os.path.join(r.root, "harness")
+    assert f'"{harness}/DRAFT-PLAN.json": JSON object with' in res.json["prompt"] and "0000/PLAN.json" not in res.json["prompt"], "one destination for the plan"
+    start = f'py -3.13 "{os.path.join(harness, "src", "run.py")}" --root "{r.root}" start --plan "{harness}/DRAFT-PLAN.json"'
+    assert start in res.json["prompt"], "the printed start command names the repository it was rendered for"
