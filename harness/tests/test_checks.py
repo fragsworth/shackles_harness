@@ -206,6 +206,27 @@ def test_record_reports_the_undefined_lines_the_attempt_added(tmp_path):
     assert rec.json["undefined_new"] == [] and rec.json["judgment_calls"]["undefined"] == 3
 
 
+def test_record_that_raises_a_checkpoint_still_reports_the_attempts_undefined_lines(tmp_path):
+    """Exit 10 from record carries undefined_new and prints the lines (R4-m2); the attempt entry in HISTORY counts them since the previous
+    checkpoint, not since the one it just raised (R4-m1)."""
+    r = Repo(tmp_path)
+    r.start()
+    rec = r.act(r.next().json, "needs_owner", env={"STUB_JUDGMENT": "0,2"})
+    assert rec.code == 10 and rec.json["kind"] == "checkpoint" and rec.json["checkpoint"]["kind"] == "question"
+    lines = ["- PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 1", "- PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 2"]
+    assert rec.json["undefined_new"] == lines and rec.json["undefined_tail"] == lines
+    assert "undefined judgment call: - PLAN-AGENTS attempt 1: STUB-UNDEFINED-CALL 2" in rec.stderr
+    h = r.read(f"{FOLDER}/HISTORY.md")
+    attempt_entry = h[h.index("PLAN-AGENTS attempt 1: NEEDS-OWNER"):h.index("CHECKPOINT question at PLAN-AGENTS")]
+    assert "(2 undefined since the last checkpoint)" in attempt_entry and "(0 undefined since" not in attempt_entry
+    assert "(2 undefined since the last checkpoint)" in rec.json["message"]
+    assert r.run("approve", "--quote", "go on").code == 0
+    rec = r.act(r.next().json, "pass", env={"STUB_JUDGMENT": "0,1"})
+    assert rec.code == 0 and rec.json["undefined_new"] == ["- PLAN-AGENTS attempt 2: STUB-UNDEFINED-CALL 1"]
+    h = r.read(f"{FOLDER}/HISTORY.md")
+    assert "(1 undefined since the last checkpoint)" in h[h.index("PLAN-AGENTS attempt 2: DONE"):], "the baseline moved at the checkpoint"
+
+
 def test_claimed_judgment_calls_are_compared_with_the_files(tmp_path):
     """A message that claims calls the files do not show (or the reverse) is one FLAG; matching counts are silent (R3-m8)."""
     r = Repo(tmp_path)

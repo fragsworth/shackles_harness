@@ -130,9 +130,10 @@ class Round:
     def undefined_tail(self, n=5):
         return self.judgment_lines("undefined")[-n:]
 
-    def judgment_report(self):
+    def judgment_report(self, base=None):
+        """`base` is the count at the last checkpoint; record passes the one it read before routing, which may have raised a checkpoint."""
         counts = self.judgment_counts()
-        since = counts["undefined"] - self.state.get("undefined_at_checkpoint", 0)
+        since = counts["undefined"] - (self.state.get("undefined_at_checkpoint", 0) if base is None else base)
         lines = [f"Judgment calls: defined {counts['defined']}, undefined {counts['undefined']} ({since} undefined since the last checkpoint)."]
         tail = self.undefined_tail()
         if tail:
@@ -828,7 +829,7 @@ class Round:
         ledger.append(st, step, attempt, usd, source, note_text + (f" (rung {rung_name})" if off_plan else ""))
         ledger.append(st, step, attempt, self.cfg["driverUsdPerStep"], "driver")
         st["attempts"][step] = attempt
-        before = pending.get("judgment") or st["judgment_calls"]
+        before, base = pending.get("judgment") or st["judgment_calls"], st.get("undefined_at_checkpoint", 0)
         st["attempt_pending"] = None
         if kind == "gate":
             obj, notes = schemas.normalize_findings(obj, step, attempt, self.next_finding_id(), self.withdrawn_quotes(), int(self.cfg["findingQuoteMaxChars"]))
@@ -847,18 +848,19 @@ class Round:
         if len(notes) > NOTE_CAP:
             notes = notes[:NOTE_CAP] + f" [cut at {NOTE_CAP} characters; the whole message is {result_rel}.json]"
         self.history(f"{step} attempt {attempt}: {obj.get('status') or obj.get('verdict')}\n\n{notes}"
-                     f"\n\ncost ${round(usd, 4)} ({source}); {delta}\n" + self.judgment_report())
+                     f"\n\ncost ${round(usd, 4)} ({source}); {delta}\n" + self.judgment_report(base))
         if st["status"] == "finished":
             self.history("FINISHED")
         self.save()
         self.commit(f"{step} attempt {attempt}", push)
+        new = after["undefined"] - before["undefined"]  # the lines this attempt appended: the driver relays them, delegated or not
+        undefined_new = self.undefined_tail(new) if new > 0 else []
         if st["status"] == "checkpoint":
-            return self.checkpoint_payload(), 10
+            return dict(self.checkpoint_payload(), undefined_new=undefined_new), 10
         if st["status"] == "finished":
             return self.done_payload(landing.sync_main(self, push)), 0
-        new = after["undefined"] - before["undefined"]  # the lines this attempt appended: the driver relays them, delegated or not
         return {"kind": "recorded", "round": self.id, "step": step, "attempt": attempt, "next_step": st["step"],
-                "spend": self.spend(), "judgment_calls": after, "undefined_new": self.undefined_tail(new) if new > 0 else [],
+                "spend": self.spend(), "judgment_calls": after, "undefined_new": undefined_new,
                 "undefined_file": self.abs(self.paths["undefined"]), "warnings": self.notes}, 0
 
     def snapshot(self, exclude, merge):
