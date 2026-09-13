@@ -5,6 +5,8 @@ import shutil
 import sys
 import tempfile
 
+import yaml
+
 from . import agents, config as configmod, contract, gitops, pipeline, procs, schemas, specguard
 from .gitops import RunnerError
 
@@ -156,6 +158,22 @@ def cmd(args, root):
     return ({"probes": out} if len(out) > 1 else out[0]), 0
 
 
+def set_yaml_keys(text, values):
+    """Replace each top-level `key:` block of a YAML text, or append the key, leaving every other line (the comments) as it is."""
+    lines = text.rstrip("\n").splitlines()
+    for key, value in values.items():
+        block = yaml.safe_dump({key: value}, sort_keys=False, default_flow_style=None).rstrip("\n").splitlines()
+        starts = [i for i, l in enumerate(lines) if l.startswith(key + ":")]
+        if not starts:
+            lines += block
+            continue
+        end = starts[0] + 1
+        while end < len(lines) and lines[end].startswith((" ", "\t", "- ")):
+            end += 1
+        lines[starts[0]:end] = block
+    return "\n".join(lines) + "\n"
+
+
 def sandbox(root, target):
     """<target>/origin.git (bare) and <target>/repo: the harness copied from `root`, the toy project as its target project."""
     fixtures, _ = _fixtures()
@@ -171,6 +189,11 @@ def sandbox(root, target):
             shutil.copyfile(src, os.path.join(repo, name))
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc", "archives", "OWNER.log", "local.yaml", "DRAFT-PLAN.json")
     shutil.copytree(os.path.join(root, "harness"), os.path.join(repo, "harness"), ignore=ignore)
+    for rel in specguard.spec_files(root):  # every owner file, wherever spec.yaml puts it (SPEC.md is at the root)
+        src, dst = os.path.join(root, *rel.split("/")), os.path.join(repo, *rel.split("/"))
+        if os.path.exists(src):
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(src, dst)
     archives = os.path.join(repo, "harness", "archives")
     os.makedirs(archives, exist_ok=True)
     for name in ("spec-baseline.json", "spec-changes.jsonl"):
@@ -184,12 +207,9 @@ def sandbox(root, target):
         os.makedirs(os.path.join(repo, ".claude"), exist_ok=True)
         shutil.copyfile(settings, os.path.join(repo, ".claude", "settings.json"))
     fixtures.write_toy(repo)
-    project_path = os.path.join(repo, "harness", "project.yaml")
-    data = configmod.load_yaml(project_path)
-    data["livingSourcePaths"] = ["../src/", "../tests/", "docs/"]
-    data["suiteCommand"] = fixtures.toy_verify()
-    import yaml
-    procs.write_text(project_path, yaml.safe_dump(data, sort_keys=False))
+    project_path = os.path.join(repo, "harness", "project.yaml")  # two keys edited in place, so the owner's comments survive the copy
+    procs.write_text(project_path, set_yaml_keys(procs.read_text(project_path), {"livingSourcePaths": ["../src/", "../tests/", "docs/"],
+                                                                                 "suiteCommand": fixtures.toy_verify()}))
     specguard.accept(repo, "sandbox: living paths point at the toy project")
     gitops.git(repo, "init", "-q", "-b", "main")
     gitops.git(repo, "config", "core.longpaths", "true")  # round worktrees under a temp folder run past Windows' 260 characters

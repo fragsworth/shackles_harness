@@ -1,15 +1,25 @@
 """probe and sandbox with the stub; the defect fixtures; the generated agent definitions."""
+import contextlib
+import io
 import json
 import os
 
 import pytest
+import yaml
 
 import fixtures
 import stub_agent
 from fixtures import Repo
-from shackles import agentdefs, config as configmod, pipeline, probe, procs
+from shackles import agentdefs, cli, config as configmod, pipeline, probe, procs, specguard
 
 REPO_ROOT = fixtures.REPO_ROOT
+
+
+def run_cli(root, *argv):
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = cli.main(["--root", root] + list(argv))
+    return fixtures.Result(code, out.getvalue(), err.getvalue())
 
 
 def test_every_defect_fixture_loads():
@@ -84,6 +94,28 @@ def test_sandbox_builds_and_a_stub_round_finishes_there(tmp_path):
     res = v.run("run", "--until", "done", env={"STUB_ARCHIVE": "1"})
     assert res.code == 0 and res.json["kind"] == "done" and res.json["main_synced"], res
     assert sb.origin.sha("main") == v.head()
+
+
+def test_set_yaml_keys_replaces_or_appends_and_keeps_comments():
+    text = "# top\na: 1  # inline\nb:\n  x: 1\n  # inner\n  y: 2\nc: [1, 2]\n# tail\nd: 4\n"
+    out = probe.set_yaml_keys(text, {"c": ["p", "q"], "b": {"z": 3}, "e": [5]})
+    assert yaml.safe_load(out) == {"a": 1, "b": {"z": 3}, "c": ["p", "q"], "d": 4, "e": [5]}
+    assert "# top" in out and "# inline" in out and "# tail" in out and out.index("# tail") < out.index("e:")
+
+
+@pytest.mark.slow
+def test_sandbox_of_the_real_repository_passes_spec_status_and_doctor(tmp_path):
+    """The sandbox copies spec.yaml and every file it lists, wherever they are (SPEC.md is at the root), with the owner's comments."""
+    res = run_cli(REPO_ROOT, "sandbox", "--dir", str(tmp_path / "real"))
+    assert res.code == 0, res
+    repo = res.json["repo"]
+    assert specguard.spec_files(repo) == specguard.spec_files(REPO_ROOT) and all(os.path.exists(os.path.join(repo, f)) for f in specguard.spec_files(repo))
+    status = run_cli(repo, "spec", "status")
+    assert status.code == 0 and status.json["clean"], status
+    report = run_cli(repo, "doctor")
+    assert report.code == 0 and report.json["errors"] == [], report
+    comments = lambda path: sum(1 for l in procs.read_text(path).splitlines() if l.startswith("#"))
+    assert comments(os.path.join(repo, "harness", "project.yaml")) >= comments(os.path.join(REPO_ROOT, "harness", "project.yaml")) > 0
 
 
 def test_agent_definitions_match_the_roster(tmp_path):

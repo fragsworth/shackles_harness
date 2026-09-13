@@ -12,7 +12,7 @@ import yaml
 
 from shackles import cli
 from shackles import config as configmod
-from shackles import gitops, pipeline, procs
+from shackles import gitops, pipeline, procs, specguard
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -91,11 +91,12 @@ def write_spec(root, gates=None, config=None, spec="fixture"):
     prose_dir = os.path.join(h, "locked_prose")
     os.makedirs(prose_dir, exist_ok=True)
     if spec == "real":
-        for name in ("AGENTS.md", "project.yaml", "subAgents.yaml"):
-            shutil.copyfile(os.path.join(REPO_ROOT, "harness", name), os.path.join(h, name))
+        for rel in [specguard.SPEC_YAML] + specguard.spec_files(REPO_ROOT):  # spec.yaml and every path it lists, wherever it puts them
+            dst = os.path.join(root, *rel.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(os.path.join(REPO_ROOT, *rel.split("/")), dst)
         for name in os.listdir(os.path.join(REPO_ROOT, "harness", "locked_prose")):
             shutil.copyfile(os.path.join(REPO_ROOT, "harness", "locked_prose", name), os.path.join(prose_dir, name))
-        shutil.copyfile(os.path.join(REPO_ROOT, "spec.yaml"), os.path.join(root, "spec.yaml"))
         data = configmod.load_yaml(os.path.join(h, "project.yaml"))
         data["livingSourcePaths"] = ["../src/", "../tests/", "docs/"]
         data["suiteCommand"], data["agentCommand"], data["lostValuePerHour"] = toy_verify(), stub_command(), 0
@@ -194,7 +195,6 @@ def build_repo(root, gates, config, spec):
     copy_runner(root)
     procs.write_text(os.path.join(root, ".gitignore"), GITIGNORE)
     procs.write_text(os.path.join(root, ".gitattributes"), "harness/archives/**/*.jsonl merge=union\n")
-    from shackles import specguard
     specguard.accept(root, "fixture baseline")
     gitops.git(root, "init", "-q", "-b", "main")
     gitops.git(root, "add", "-A")
