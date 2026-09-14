@@ -1,7 +1,7 @@
 # shackles spec
 
 ## spec.yaml
-The files spec.yaml lists are the implied shackles spec: harness/AGENTS.md, project.yaml, subAgents.yaml, the
+The files spec.yaml lists are the implied shackles spec: harness/AGENTS.md, project.yaml, the
 locked prose, and this file. They say what the harness must do. Everything else in the repository is derived
 from them and must survive arbitrary edits to them; a test fails whenever one of them changes until the change
 is reviewed and accepted.
@@ -21,3 +21,9 @@ is reviewed and accepted.
 - doctor renders every prompt offline and names unresolved tokens, unknown steps and defaulted config keys. [other]
 - A prompt hook logs the owner's chat to a gitignored OWNER.log; the runner verifies quotes against it. [non-obvious]
 - Agent definitions are generated per rung: the Agent tool takes effort only from one loaded at session start. [hard]
+- The ledger bills what happened and not what was planned. [clarification]
+- Agents never close something or land it with silence, unless instructed by language in locked_prose. [clarification]
+- Everything contained in files specified by spec.yaml is the whole settings surface. Every setting or piece of text the owner may edit appears in these files, and each is used for something. [clarification]
+- Owner words in locked_prose are not to be taken as literal descriptions of underlying enforced software, until approved by the owner.
+- The step list assumed fixed. It won't be edited without major consideration to the effects.
+

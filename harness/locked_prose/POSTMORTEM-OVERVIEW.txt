@@ -12,6 +12,8 @@ Then, for each issue, decide:
 1) The plan(s) and owner words related to the components, and project vision, are all in alignment, and this was missed: propose a sensible fix and add it to TODOs for next round.
 or 2) Something is in conflict or ambiguous, and the owner is unaware: add it to CLARIFICATIONS for owner review with the plan(s) and exact owner words that led to the conflict. If possible, find the agent judgment call that disambiguated the issue without the owner's realization.
 
+Write a postmortem summary about the above. Add the costs of the summary to the ledger at {{ project.postMortemCostPerSummaryWord }} per word. Minimize costs while writing in plain English. This summary is provided to the owner.
+
 The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
 
 {{ plumbing.PROCESS-INSTRUCTIONS }}

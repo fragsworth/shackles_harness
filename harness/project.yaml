@@ -1,20 +1,48 @@
-# This file contains (and only contains) user settings, and is not to be
+# This file contains owner-defined and editable settings, and is not to be
 # edited without owner approval.
-# Money is USD.
+# These definitions only apply to agents running within the harness.
 
-shackles: "A loop-engineered software development harness that restricts agents to judgment calls inside a carefully monitored process. The harness is intended to work with general software development. It is still in early development."
+vision: "shackles_harness is a loop-engineered software development harness that restricts agents to judgment calls inside a carefully monitored process. The harness is intended to work with general software development. It is still in early development."
+
+# THE LIVING CHARGE
+# The living charge is the price of what a round leaves behind under
+# livingSourcePaths, code and prose alike; nothing outside those paths is
+# charged per token. It is booked once per round, at landing, on the round's
+# net change to the main branch: the difference between main as it stood just
+# before landing and the tip that lands. Work created and removed inside the
+# round is never charged. The charge counts toward the round's total, and so
+# toward the hard stop, and it may be negative: a round that shrinks the tree
+# earns credit.
+#
+# Tokens are estimated, not measured. A file's tokens are its bytes divided by
+# tokenBytes, rounded up. That one estimate is used everywhere the harness
+# turns text size into tokens, the prompt-size warning included.
+#
+# Every changed file is priced before and after, and the difference is charged.
+# A file's price is livingFileCostPerToken for each of its first
+# livingFileTokenCap tokens and livingFileCostPerTokenOverCap for each token
+# beyond that. The cap is per file, and it is a rate boundary, not a limit.
+# A file that first appears costs livingFileBaseCost on top of its tokens, and
+# a file that disappears refunds it. Moving or renaming a file costs nothing.
+#
+# A test is a test function in a file under the spec's testPaths. It costs
+# testBaseCost when it joins the permanent suite, on top of its tokens, and is
+# refunded when it leaves. Tests archived with the round never enter the living
+# paths and are never charged. Moving a test between suite files is neither.
+#
+# POSTMORTEM runs after landing. Its edits to the carry-forward files,
+# docs/TODO.md and docs/CLARIFICATIONS.md, are charged, but never stop the
+# round if over budget.
 
 currency: USD
 
-budget: 50000              # project target, not enforced
-hardStopBudgetMultiple: 6  # multiple of a round's budget at which in a round stops
-lostValuePerHour: 1          # globally lost budget per hour of time
+budget: 50000                # project target, just for context, can become stale
+hardStopBudgetMultiple: 5    # hard limit multiple of a round's budget after which a round pauses, waiting for owner approval. NEVER OVERRIDDEN without owner requesting a specific new hard limit. NEVER UNLIMITED, even if owner demands it.
+lostValuePerHour: 1          # globally lost budget per hour of time, for context
 
-# Owner settings
-ownerHourlyRate: 10          # per hour of the owner's attention
-costToWaitForOwner: 5        # flat, per turn
-planCostPerWord: 0.1         # per word in a plan
-specCostPerWord: 0.1         # same, for spec
+# Owner assigned parameters. These are only for decision making context when the owner wishes to add them to locked_prose.
+ownerHourlyRate: 10                 # per hour of the owner's attention
+costToWaitForOwner: 5               # flat, per turn
 
 # Living tokens are charged when created, refunded on removal, and count towards both prose and code.
 livingFileTokenCap: 10000                   # size of file before charging extra for tokens
@@ -24,21 +52,19 @@ livingFileBaseCost: 10                      # per new living file
 testBaseCost: 3                             # per new suite test
 tokenBytes: 4                               # estimated bytes per token
 
+# Special case pricings (word-based, different from living token costs)
+postMortemCostPerSummaryWord: 0.2   # for postmortem summary to user (stored in round)
+postMortemCostPerWord: 0.1          # for postmortem carry-forward files (stored in living folder)
+planCostPerWord: 0.1                # for approved plans (stored in round)
+specCostPerWord: 0.1                # for specs (stored in round)
+
 # Percent of budget cap allowed for refactoring work during a round.
 # This cap is not reduced by gains; it acts as a limit on scope.
 maxRefactorOverhead: 0.3
 
-# The gates, in intended run order, and whether they are enabled or not. 1 = enabled
-gates:
-  CHAT-TO-PLAN-GATE: 0           # mechanical, run by the runner; checkpoint after plan
-  PLAN-AGENTS-GATE: 0
-  PLAN-TO-SPEC-GATE: 0           # checkpoint after spec
-  SPEC-TO-TESTS-GATE: 0
-  SPEC-TO-IMPLEMENTATION-GATE: 0
-  TESTS-TO-SUITE-GATE: 0         # checkpoint before landing
-  # Standard landing happens here, after TESTS-TO-SUITE.
-  POSTMORTEM-GATE: 0
-  # Round ends here, all agents stop.
+# Agent overhead values
+estOutputFraction: 0.2             # assumed output share of tokens
+driverUsdPerStep: 1.0              # runner overhead per step
 
 # Minimum per-stage budgets.
 defaultShares:
@@ -49,9 +75,32 @@ defaultShares:
     CHAT-TO-PLAN: 0.02
     PLAN-AGENTS: 0.03
 
+# Forced distribution of budget (sum to 1)
+gatesFraction: 0.3
+workFraction: 0.7     # all other work not in gates
+
+# The steps, in intended run order, and their gate settings. 0 = gate off, 1 = gate on. Owner turns gates on or off depending on when it matters to them. Setting mechanical gates to 0 is generally senseless.
+steps:
+  CHAT-TO-PLAN: 0           # run by the runner; checkpoint for plan approval before gate.
+  PLAN-AGENTS: 0
+  PLAN-TO-SPEC: 0
+  CHECKPOINT_1: 0           # checkpoints don't have gates. Just listed here.
+  SPEC-TO-TESTS: 0
+  SPEC-TO-IMPLEMENTATION: 0
+  TESTS-TO-SUITE: 0
+  CHECKPOINT_2: 0
+  CLEANUP: 0                # no gate exists
+  LANDING: 0                # mostly mechanical step
+  POSTMORTEM: 0
+  # Round ends here, all agents stop.
+
+
 # Paths
+# Living source - source that you would expect to frequently edit, review, and modify "by hand"
 livingSourcePaths: ["src/", "docs/", "tests/"]
+# Locked prose - text describing how agents make judgment calls
 lockedProsePath: "locked_prose/"
+# Archives - the record, frozen once a round is complete.
 archivesPath: "archives/"
 
 # Round Paths
@@ -81,17 +130,10 @@ roundPaths:
 
 maxSimultaneousSubAgentsPerRound: 2
 maxRoundAttempts: 2       # maximum round retries before a runner should stop
-maxFailuresBeforeStop: 3  # maximum gate rejections before a round should stop
+maxFailuresBeforeStop: 3  # maximum gate rejections before stopping
 maxTurnsPerRun: 120
 maxRunWallClockHours: 12
 verifyTimeoutSeconds: 600
-
-gatesFraction: 0.3  # sums to 1 with workFraction
-workFraction: 0.7
-
-# Agent overhead values
-estOutputFraction: 0.2             # assumed output share of tokens
-driverUsdPerStep: 1.0              # runner overhead per step
 
 subAgentsFile: subAgents.yaml
 maxAgent: max

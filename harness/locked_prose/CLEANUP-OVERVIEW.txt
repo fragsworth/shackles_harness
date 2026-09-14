@@ -4,8 +4,6 @@ CLEANUP: standard cleanup, no new behaviour.
 {{ prose.COMMON-ROUND }}
 {{ prose.COMMON-OVERVIEW }}
 
-Clean up the round, so that it can be landed without issue.
-
-Checkpoint after this step, with the owner.
+Clean up the round, so that it can be landed without issue, and land it.
 
 {{ plumbing.PROCESS-INSTRUCTIONS }}

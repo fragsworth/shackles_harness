@@ -14,8 +14,6 @@ Accomplish these tasks by optimizing the budget, within reason. Refactor where s
 
 Carry the plan's non-goals in the spec.
 
-Checkpoint after this step, with the owner.
-
 The gate that judges you will have the following prose: {{ plumbing.GATE-PROSE }}
 
 {{ plumbing.PROCESS-INSTRUCTIONS }}

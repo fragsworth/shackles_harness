@@ -4,6 +4,8 @@ POSTMORTEM-GATE: judge the postmortem.
 {{ prose.COMMON-ROUND }}
 {{ prose.COMMON-GATE }}
 
+Is the postmortem summary not sensible? Fail.
+
 For each issue found by the postmortem:
   Is the trace incomplete? Fail.
   Is the decision not sensible? Fail.
