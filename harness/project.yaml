@@ -2,7 +2,7 @@
 # edited without owner approval.
 # These definitions only apply to agents running within the harness.
 
-vision: "shackles_harness is a loop-engineered software development harness that restricts agents to judgment calls inside a carefully monitored process. The harness is intended to work with general software development. It is still in early development."
+vision: "shackles_harness is a loop-engineered software development harness that tracks and distinguishes judgment calls made by agents, reminding them of the big picture whenever they have to make them. The harness is intended to work with general software development. It is still in early development."
 
 # THE LIVING CHARGE
 # The living charge is the price of what a round leaves behind under

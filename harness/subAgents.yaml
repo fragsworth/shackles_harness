@@ -4,7 +4,7 @@
 # spawnCost is USD, estimated: the floor for one spawn — assembled harness
 # prompt in, minimal result out.
 
-## Estimated/measured overhead values - anything that can be derived or looked up, and should be considered in budgets
+## Estimated/measured overhead values - anything that can be derived or looked up
 estOutputFraction: 0.2
 driverUsdPerStep: 1
 

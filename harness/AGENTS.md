@@ -14,7 +14,7 @@ grep `INDEX.md` for routing, read `docs/PROCESS.md` for the rules.
 * {{ plumbing.PROCESS-INSTRUCTIONS }} refers to the mechanical steps agents must follow given their current task. These steps never require judgment calls.
 
 ## DEFINED AND UNDEFINED JUDGMENT CALLS
-* A judgment call is any choice that lands in your finished work that someone later, human or agent, is likely to blame you for making incorrectly, rather than the author of your task. The intent here is to track and classify judgment calls, not to stop them.
+* A judgment call is any choice that lands in your finished work that you are not confident in making correctly for any reason. The intent here is to track and classify judgment calls, not to stop them.
 * A DEFINED JUDGMENT CALL is one you can make from the text of your prompt alone: its instructions, AGENTS.md, and the locked prose rendered into it, with nothing read from any file the prompt points you to. It is expected and logged.
 * Any judgment call made by including information outside your prompt is an UNDEFINED JUDGMENT CALL.
 * A blanket DEFINED ask such as "do what is sensible" only defines how you choose, not the line between the definitions: when the code, tests, or docs conflict with your prompt or falls silent on something that impacts behavior, the judgment call is UNDEFINED even though the prose told you to be sensible.
