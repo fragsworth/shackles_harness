@@ -21,11 +21,11 @@ Rule applied, from the owner's prompt to the coordinating session: DEFINED when 
 - D15. Hard stop: spend plus projected living charge against multiple times quote, before every agent run and before landing; approval needs a new multiple, which re-arms it; post-landing bookings never pause. Basis: the hardStop comment; the POSTMORTEM paragraph.
 - D16. hardStopBudgetMultipleIndividual times the step budget caps one run where the runner can cap it; a recorded run over it pauses. Basis: "like above, applied to a single agent and its own budget".
 - D17. Owner time and elapsed time are shown, never booked. Basis: "for context"; placeholders commented out.
-- D18. driverUsdPerStep and the planning share enter the quote and the retry cost shown to gates, and are not booked. Basis: "should be considered in budgets"; "bills what happened and not what was planned". The other reading, book it as an estimate of a real cost, is defensible; listed as unsettled.
+- D18. driverUsdPerStep is booked per recorded attempt and once at start, as the estimate of a real cost, and enters the retry cost shown to gates; the planning share enters the quote only. Basis: the driver's turns are what happened, so "bills what happened" covers an estimate of them, as it does estOutputFraction; the owner's ruling of 2026-09-14. The first reading, planning only, rested on "should be considered in budgets", which the owner then removed.
 - D19. An off gate's share is unspent; the producer's budget is unchanged. Basis: "A gate that is off does not incur a charge."
 - D20. maxRefactorOverhead and defaultShares are printed, not enforced; gatesFraction plus workFraction must sum to one. Basis: the Advisory and Enforced headings.
-- D21. maxTurnsPerGate counts rejections of one producer by its gate and by the mechanical checks; reaching it pauses. Basis: "turns (rejections) per gate"; SPEC.md 12 makes the mechanical checks a rejection. Listed as unsettled.
-- D22. maxTurnsPerRun and maxRunWallClockHours are enforced where the runner runs the agent, printed otherwise; hitting one pauses the round. Basis: the heading "Limits before pausing a round".
+- D21. maxTurnsPerGate counts rejections of one producer by its gate and by the mechanical checks; reaching it pauses. Basis: "turns (rejections) per gate"; SPEC.md 12 makes the mechanical checks a rejection. Confirmed by the owner on 2026-09-14.
+- D22. Wall clock is measured in both modes, stamped when the action prints and read at record, and a breach pauses the round; turns are capped only in headless runs, and maxTurnsPerRun is documented as headless-only. Basis: the heading "Limits before pausing a round"; a limit the process cannot observe is no limit; the owner's ruling of 2026-09-14. The first reading, print it in driver mode, was withdrawn.
 - D23. maxAgent is a ceiling on the roster ladder in roster order; defaultAgent the default for work; a plan naming a higher rung is refused. Basis: project.yaml; subAgents.yaml "rungs on a capability ladder".
 - D24. A question always pauses; the ruling field, the silent settle and the assumption field go; the answer returns as a finding; at a question the runner accepts only an answer and the driver turns the owner's words into one. Basis: COMMON-OVERVIEW; SPEC.md 10; the words table; the owner's ruling in chat.
 - D25. Start refuses without an owner log; a quote the log lacks is refused. Basis: SPEC.md 19.
@@ -38,6 +38,11 @@ Rule applied, from the owner's prompt to the coordinating session: DEFINED when 
 - D32. `vision` replaces the `shackles` default. Basis: project.yaml and COMMON-PROJECT.
 - D33. Six slices in dependency order, doctor clean and suite green after each; one builder, a reviewer twice, then a sandbox round. Basis: the owner's request for a nice refactor; the earlier plan-for-the-plan.
 - D34. The plan states behaviour, not module layout; the naming rule stands in for design. Basis: the owner's request for a high-level plan.
+- D35. The recorder answers each call with the big picture: the vision and the judgment-call definitions. Basis: the vision as reworded on 2026-09-14, "reminding them of the big picture whenever they have to make them".
+
+## Owner rulings, 2026-09-14
+
+Asked whether the open readings were obvious under the vision, the owner ruled: D18 flips to booked; D22 sharpens to wall clock measured at record in both modes with turns headless-only; D21, D9, D14 and U2 stand as written. The owner then reworded the vision from restricting agents to tracking and distinguishing their judgment calls and reminding them of the big picture; D35 follows from that wording.
 
 ## UNDEFINED
 
