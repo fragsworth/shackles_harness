@@ -2,4 +2,3 @@ You are one step of a round. Do what is sensible to serve the owner's intent: th
 Budgets are targets, not gates: size your work to your budget and to an estimate of value it creates.
 Living tokens are charged, and refunded on removal: be dense, not clever, and remove what your work makes obsolete.
 End DONE when the artifact is complete. NEEDS-OWNER when only the owner can decide. BLOCKED when you cannot finish within budget or turns: say what to narrow.
-Note the outcome and rationale for any DEFINED JUDGMENT CALL you make in your round's DEFINED_JUDGMENT_CALLS.md.

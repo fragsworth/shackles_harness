@@ -5,7 +5,7 @@ PLAN-AGENTS: choose the agent, sub-agents and budget share for each step and gat
 {{ prose.COMMON-OVERVIEW }}
 
 Choose what is sensible given context windows, cost, agent strengths, the task, the vision, and anything else you deem reasonable to consider. Optimize the budget, within reason.
-Expect one or two rejections per gated step and size for them.
+Expect one or two rejections per gated step; each retry is budgeted at the step's share again.
 Plan to refactor where sensible, but avoid the refactor cap.
 Accomplish these tasks by optimizing the budget, within reason.
 

@@ -3,4 +3,4 @@ This message is produced at the end of every step where an agent has done work.
 This is a reminder from AGENTS.md:
 {{ agents.DEFINED_AND_UNDEFINED_JUDGMENT_CALLS }}
 
-Carefully review your work, and look for any JUDGMENT CALLS you made and did not report already. For each, classify them, and report with the report_judgment_call.py tool.
+Carefully review your work, and look for any JUDGMENT CALLS you made and did not report already. For each, classify them, and report each with the judgment-call tool your process instructions name (gates: in your final message)

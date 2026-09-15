@@ -1,1 +1,1 @@
-Stop and provide a summary of your work, any assumptions or judgment calls you made, any details they should know about, and get approval before continuing.
+Driver: stop, give the owner a summary of the round's work so far, the assumptions and judgment calls recorded, and anything they should know, and wait for their approval before continuing.

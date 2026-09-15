@@ -1,10 +1,11 @@
 # spec.yaml: the project plan / spec.
 # The files listed here are "the spec.yaml files". They belong to the owner and change
 # often. Everything else in the repository must stay robust to arbitrary changes in them.
-# Agents do not edit them unless given exact text by the owner.
 # Paths are relative to this file.
 files:
+  - spec.yaml
   - SPEC.md
   - harness/AGENTS.md
   - harness/project.yaml
+  - harness/subAgetns.yaml
   - harness/locked_prose/*

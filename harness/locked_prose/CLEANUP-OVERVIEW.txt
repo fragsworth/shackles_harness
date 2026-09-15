@@ -4,6 +4,6 @@ CLEANUP: standard cleanup, no new behaviour.
 {{ prose.COMMON-ROUND }}
 {{ prose.COMMON-OVERVIEW }}
 
-Clean up the round, so that it can be landed without issue, and land it.
+Clean up anything that is sensible to clean up now that the round is over. The runner books the round's charges.
 
 {{ plumbing.PROCESS-INSTRUCTIONS }}

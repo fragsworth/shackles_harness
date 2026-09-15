@@ -7,12 +7,10 @@ vision: "shackles_harness is a loop-engineered software development harness that
 # THE LIVING CHARGE
 # The living charge is the price of what a round leaves behind under
 # livingSourcePaths, code and prose alike; nothing outside those paths is
-# charged per token. It is booked once per round, at landing, on the round's
+# charged per token. It is booked once per round, at cleanup, on the round's
 # net change to the main branch: the difference between main as it stood just
-# before landing and the tip that lands. Work created and removed inside the
-# round is never charged. The charge counts toward the round's total, and so
-# toward the hard stop, and it may be negative: a round that shrinks the tree
-# earns credit.
+# before landing and the tree as cleanup leaves it. Work created and removed inside the
+# round is never charged. The charge is part of the quote: the planner estimates it, and the hard stop is checked against the projected charge before landing. It may be negative: a round that shrinks the tree earns credit.
 #
 # Tokens are estimated, not measured. A file's tokens are its bytes divided by
 # tokenBytes, rounded up. That one estimate is used everywhere the harness
@@ -34,76 +32,83 @@ vision: "shackles_harness is a loop-engineered software development harness that
 # docs/TODO.md and docs/CLARIFICATIONS.md, are charged, but never stop the
 # round if over budget.
 
+## PRICES & BUDGETS
+
 currency: USD
 
-budget: 50000                # project target, just for context, can become stale
-hardStopBudgetMultiple: 5    # hard limit multiple of a round's budget after which a round pauses, waiting for owner approval. NEVER OVERRIDDEN without owner requesting a specific new hard limit. NEVER UNLIMITED, even if owner demands it.
-lostValuePerHour: 1          # globally lost budget per hour of time, for context
+budget: 50000                         # project target, just for context, can become stale
+hardStopBudgetMultiple: 5             # hard limit multiple of a round's budget after which a round pauses. Never overridden without owner requesting a temporary, specific new multiple for the round.
+hardStopBudgetMultipleIndividual: 10  # hard limit, like above, applied to a single agent and its own budget
+lostValuePerHour: 1                   # globally lost budget per hour of time, for context
 
-# Owner assigned parameters. These are only for decision making context when the owner wishes to add them to locked_prose.
-ownerHourlyRate: 10                 # per hour of the owner's attention
-costToWaitForOwner: 5               # flat, per turn
+# Owner placeholders. Ignore for now.
+# ownerHourlyRate: 10                 # per hour of the owner's attention
+# costToWaitForOwner: 5               # flat, per turn
 
-# Living tokens are charged when created, refunded on removal, and count towards both prose and code.
+# Living tokens
+# These are charged when created, refunded on removal, and count towards both prose and code. Booked once, at cleanup, on the round's net change.
 livingFileTokenCap: 10000                   # size of file before charging extra for tokens
 livingFileCostPerToken: 0.25                # price per token below file cap
 livingFileCostPerTokenOverCap: 0.5          # price per token above file cap
 livingFileBaseCost: 10                      # per new living file
 testBaseCost: 3                             # per new suite test
 tokenBytes: 4                               # estimated bytes per token
+postMortemFileCostPerToken: 0.3             # special case for postmortem carry-forward files
 
-# Special case pricings (word-based, different from living token costs)
-postMortemCostPerSummaryWord: 0.2   # for postmortem summary to user (stored in round)
-postMortemCostPerWord: 0.1          # for postmortem carry-forward files (stored in living folder)
-planCostPerWord: 0.1                # for approved plans (stored in round)
-specCostPerWord: 0.1                # for specs (stored in round)
+# Cost for tokens that end in archive files. Cannot be refunded. Everything else in archives is free. Booked once, at cleanup.
+postMortemCostPerSummaryToken: 0.3   # for postmortem summary to user (stored in round, frozen)
+planCostPerToken: 0.2                # for approved plans (stored in round, frozen)
+specCostPerToken: 0.2                # for specs (stored in round, frozen)
 
-# Percent of budget cap allowed for refactoring work during a round.
-# This cap is not reduced by gains; it acts as a limit on scope.
+## Advisory & Enforced planning numbers
+
+# Advisory fraction of the round's quote allowed for refactoring work declared in the spec.
+# This cap is intended to act as a limit on scope, without considering gains.
 maxRefactorOverhead: 0.3
 
-# Agent overhead values
-estOutputFraction: 0.2             # assumed output share of tokens
-driverUsdPerStep: 1.0              # runner overhead per step
-
-# Minimum per-stage budgets.
+# Advisory minimum per-stage budgets. A plan should not go below them.
 defaultShares:
   work:
     CHAT-TO-PLAN: 0.05
     PLAN-AGENTS: 0.03
   gates:
-    CHAT-TO-PLAN: 0.02
     PLAN-AGENTS: 0.03
 
-# Forced distribution of budget (sum to 1)
-gatesFraction: 0.3
+# Enforced distribution of budget (sum to 1). A gate that is off does not incur a charge.
+gatesFraction: 0.3    
 workFraction: 0.7     # all other work not in gates
 
-# The steps, in intended run order, and their gate settings. 0 = gate off, 1 = gate on. Owner turns gates on or off depending on when it matters to them. Setting mechanical gates to 0 is generally senseless.
+## The step table, in intended run order, their gate settings, and checkpoints.
+# For steps, 0 = gate off, 1 = gate on.
+# For checkpoints, 0 = checkpoint off, 1 = checkpoint on.
+# All agents operate on the same standards as if the gates and checkpoints were on, even when they may be disabled.
+# Some steps have no gate, and setting to 1 has no effect.
 steps:
-  CHAT-TO-PLAN: 0           # run by the runner; checkpoint for plan approval before gate.
+  CHAT-TO-PLAN: 0
   PLAN-AGENTS: 0
   PLAN-TO-SPEC: 0
-  CHECKPOINT_1: 0           # checkpoints don't have gates. Just listed here.
+  CHECKPOINT-1: 1
   SPEC-TO-TESTS: 0
   SPEC-TO-IMPLEMENTATION: 0
   TESTS-TO-SUITE: 0
-  CHECKPOINT_2: 0
-  CLEANUP: 0                # no gate exists
-  LANDING: 0                # mostly mechanical step
+  CHECKPOINT-2: 1
+  LANDING: 0                # no gate
   POSTMORTEM: 0
+  CLEANUP: 0                # no gate
   # Round ends here, all agents stop.
 
+# TODO: Implement upstream mechanics; For now, a producer never sends the round back; a wrong earlier artifact is a question for the owner.
+allowUpstream: 0
 
-# Paths
+## Base Paths
 # Living source - source that you would expect to frequently edit, review, and modify "by hand"
 livingSourcePaths: ["src/", "docs/", "tests/"]
 # Locked prose - text describing how agents make judgment calls
 lockedProsePath: "locked_prose/"
-# Archives - the record, frozen once a round is complete.
+# Archives - the record, left alone by convention once a round is complete.
 archivesPath: "archives/"
 
-# Round Paths
+## Round Paths
 # One folder per round under archives/rounds/; NNNN is the round id. `folder` is that
 # folder, from the harness root; every other entry is relative to `folder`.
 roundPaths:
@@ -128,15 +133,19 @@ roundPaths:
     defined: "DEFINED_JUDGMENT_CALLS.md"
     undefined: "UNDEFINED_JUDGMENT_CALLS.md"
 
+## Other settings
 maxSimultaneousSubAgentsPerRound: 2
-maxRoundAttempts: 2       # maximum round retries before a runner should stop
-maxFailuresBeforeStop: 3  # maximum gate rejections before stopping
+
+## Limits before pausing a round
+maxRoundAttempts: 2        # maximum attempts at restarting a round after minor issues
+maxTurnsPerGate: 3         # maximum turns (rejections) per gate
 maxTurnsPerRun: 120
 maxRunWallClockHours: 12
 verifyTimeoutSeconds: 600
 
 subAgentsFile: subAgents.yaml
-maxAgent: max
-gateAgent: max
-systemTestAgent: medium
+defaultAgent: max          # default for work
+gateAgent: max             # default for gates
+systemTestAgent: medium    # default for live tests
+maxAgent: max              # ceiling (highest level agent)
 

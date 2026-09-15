@@ -8,7 +8,7 @@ Break the plan into implementation steps until the spec is complete, unambiguous
 
 Include integration tests that cross multiple systems, where sensible. Exhaust edge cases, within reason.
 
-Assume a cost of ${{ project.specCostPerWord }} per word in the spec, and the spec needs to read as plain English.
+Assume a cost of ${{ project.specCostPerToken }} per token in the spec, and the spec needs to read as plain English.
 
 Accomplish these tasks by optimizing the budget, within reason. Refactor where sensible.
 
