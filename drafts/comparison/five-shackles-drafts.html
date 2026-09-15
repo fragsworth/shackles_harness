@@ -1,0 +1,777 @@
+<title>Five Shackles Drafts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root {
+    --ground: #F3F5F8;
+    --surface: #FFFFFF;
+    --surface-2: #E9EDF2;
+    --ink: #1B1F26;
+    --ink-2: #3A414B;
+    --muted: #5F6774;
+    --rule: #D6DCE4;
+    --rule-strong: #B9C2CD;
+    --accent: #1F7A6E;
+    --accent-ink: #14574F;
+    --accent-soft: #DCEFEA;
+    --agree: #2E7D4F;
+    --agree-soft: #DDF0E3;
+    --split: #A8701A;
+    --split-soft: #F6E8CF;
+    --scatter: #A33F3F;
+    --scatter-soft: #F4DDDD;
+    --code-bg: #EDF0F4;
+    --shadow: 0 1px 2px rgba(27,31,38,0.06), 0 6px 18px rgba(27,31,38,0.05);
+    --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14171C;
+      --surface: #1D2128;
+      --surface-2: #262B34;
+      --ink: #E6E9EE;
+      --ink-2: #C5CBD3;
+      --muted: #99A2AE;
+      --rule: #2E353F;
+      --rule-strong: #414A57;
+      --accent: #4FB3A4;
+      --accent-ink: #7FD0C3;
+      --accent-soft: #1E3A37;
+      --agree: #5FBB82;
+      --agree-soft: #1E3628;
+      --split: #D9A441;
+      --split-soft: #3A2E17;
+      --scatter: #D97676;
+      --scatter-soft: #3E2222;
+      --code-bg: #262B34;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14171C;
+    --surface: #1D2128;
+    --surface-2: #262B34;
+    --ink: #E6E9EE;
+    --ink-2: #C5CBD3;
+    --muted: #99A2AE;
+    --rule: #2E353F;
+    --rule-strong: #414A57;
+    --accent: #4FB3A4;
+    --accent-ink: #7FD0C3;
+    --accent-soft: #1E3A37;
+    --agree: #5FBB82;
+    --agree-soft: #1E3628;
+    --split: #D9A441;
+    --split-soft: #3A2E17;
+    --scatter: #D97676;
+    --scatter-soft: #3E2222;
+    --code-bg: #262B34;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.55;
+    padding-inline: clamp(16px, 4vw, 40px);
+    padding-block: 0 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:hover { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+  code { background: var(--code-bg); padding: 0.05em 0.35em; border-radius: 3px; color: var(--ink-2); }
+  h1, h2, h3, h4 { font-family: var(--font-display); color: var(--ink); text-wrap: balance; margin: 0; line-height: 1.15; }
+  h1 { font-size: clamp(34px, 5vw, 52px); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: clamp(24px, 3vw, 30px); font-weight: 600; }
+  h3 { font-size: 19px; font-weight: 600; }
+  h4 { font-size: 16px; font-weight: 600; color: var(--ink-2); }
+  p { margin: 0; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  .page { max-width: 1180px; margin: 0 auto; display: grid; gap: 56px; }
+  .prose { max-width: 72ch; }
+  .prose p + p { margin-top: 0.9em; }
+
+  header.masthead { padding-block: 56px 8px; border-bottom: 1px solid var(--rule); display: grid; gap: 18px; }
+  header.masthead .lede { font-size: 20px; line-height: 1.5; color: var(--ink-2); max-width: 66ch; }
+  header.masthead .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-display); font-size: 15px; font-weight: 500; }
+  nav.toc a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+  section { display: grid; gap: 22px; }
+  section > .head { display: grid; gap: 8px; }
+  section > .head .eyebrow { margin-bottom: 2px; }
+
+  /* draft chips */
+  .d { display: inline-block; font-family: var(--font-mono); font-size: 12px; font-weight: 500; line-height: 1; padding: 4px 6px; border: 1px solid var(--accent); color: var(--accent-ink); border-radius: 3px; letter-spacing: 0.04em; white-space: nowrap; vertical-align: 0.1em; }
+  .d.all { border-style: dashed; color: var(--muted); border-color: var(--rule-strong); }
+
+  /* cards row */
+  .cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); padding: 16px 16px 18px; display: grid; gap: 10px; align-content: start; box-shadow: var(--shadow); }
+  .card .who { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .card .who h3 { font-size: 22px; }
+  .card .who .mono { color: var(--muted); font-size: 12px; }
+  .card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; }
+  .card dt { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; align-self: baseline; }
+  .card dd { margin: 0; color: var(--ink-2); line-height: 1.4; }
+  .card .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .card .shape { font-size: 14px; color: var(--ink-2); line-height: 1.45; border-top: 1px solid var(--rule); padding-top: 10px; }
+  @media (max-width: 980px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+  /* consensus groups */
+  .groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }
+  .group { display: grid; gap: 8px; align-content: start; }
+  .group h3 { display: flex; align-items: center; gap: 10px; }
+  .group h3::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--agree); flex: none; }
+  .group ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15.5px; line-height: 1.45; color: var(--ink-2); }
+  .group li::marker { color: var(--rule-strong); }
+  @media (max-width: 760px) { .groups { grid-template-columns: 1fr; } }
+
+  /* legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--ink-2); font-family: var(--font-display); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .dot.agree { background: var(--agree); }
+  .dot.split { background: var(--split); }
+  .dot.scatter { background: var(--scatter); }
+
+  /* matrix */
+  .matrix-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); box-shadow: var(--shadow); }
+  table.matrix { border-collapse: collapse; width: 100%; min-width: 1080px; font-size: 14px; line-height: 1.4; }
+  table.matrix th, table.matrix td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  table.matrix thead th { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--surface-2); font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--ink); border-bottom: 1px solid var(--rule-strong); z-index: 1; }
+  table.matrix thead th.dim { width: 190px; }
+  table.matrix thead th.status { width: 84px; }
+  table.matrix td.dim { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: 15px; }
+  table.matrix td.dim small { display: block; font-family: var(--font-body); font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 2px; }
+  table.matrix td.cell { color: var(--ink-2); }
+  table.matrix td.cell code { font-size: 12.5px; }
+  table.matrix td.status { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  table.matrix td.status span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 6px; border-radius: 999px; }
+  table.matrix td.status .agree { background: var(--agree-soft); color: var(--agree); }
+  table.matrix td.status .split { background: var(--split-soft); color: var(--split); }
+  table.matrix td.status .scatter { background: var(--scatter-soft); color: var(--scatter); }
+  table.matrix tr.section-row td { background: var(--surface-2); font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding-block: 7px; }
+  table.matrix td.cell.same { color: var(--muted); font-style: italic; }
+
+  /* judgment calls */
+  .schemes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .scheme { background: var(--surface); border: 1px solid var(--rule); padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; font-size: 14px; }
+  .scheme .who { display: flex; justify-content: space-between; align-items: baseline; }
+  .scheme .count { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .scheme .count small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .scheme .axes { display: grid; gap: 5px; color: var(--ink-2); line-height: 1.4; }
+  .scheme .axes b { font-family: var(--font-display); font-weight: 600; color: var(--ink); }
+  .scheme .tally { font-family: var(--font-mono); font-size: 12px; color: var(--muted); line-height: 1.5; border-top: 1px solid var(--rule); padding-top: 8px; }
+  @media (max-width: 980px) { .schemes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .schemes { grid-template-columns: 1fr; } }
+
+  table.plain { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; background: var(--surface); border: 1px solid var(--rule); }
+  table.plain th, table.plain td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+  table.plain th { font-family: var(--font-display); font-weight: 600; background: var(--surface-2); font-size: 14px; }
+  table.plain td.flags { white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+
+  /* gaps */
+  .gaps { display: grid; gap: 14px; }
+  .gap { display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 14px 0; border-top: 1px solid var(--rule); }
+  .gap:last-child { border-bottom: 1px solid var(--rule); }
+  .gap .who { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; padding-top: 2px; }
+  .gap ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 15px; color: var(--ink-2); line-height: 1.45; }
+  @media (max-width: 520px) { .gap { grid-template-columns: 1fr; gap: 6px; } }
+
+  /* decisions */
+  ol.decisions { margin: 0; padding-left: 0; list-style: none; counter-reset: dec; display: grid; gap: 12px; max-width: 78ch; }
+  ol.decisions li { counter-increment: dec; display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); }
+  ol.decisions li::before { content: counter(dec, decimal-leading-zero); font-family: var(--font-mono); font-size: 13px; color: var(--accent-ink); padding-top: 3px; }
+  ol.decisions li b { font-family: var(--font-display); font-weight: 600; color: var(--ink); }
+  ol.decisions li span { display: block; font-size: 15px; color: var(--ink-2); line-height: 1.45; margin-top: 3px; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 18px; font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+  footer code { font-size: 12.5px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a, .card, .scheme { transition: color 120ms ease, border-color 120ms ease; }
+  }
+</style>
+<div class="page">
+
+<header class="masthead">
+  <p class="eyebrow">shackles_harness · restart branch · drafts/draft-1 … draft-5</p>
+  <h1>Five Shackles Drafts</h1>
+  <p class="lede">Five drafters, working blind to each other and to the old code, each wrote a from-scratch spec for the harness from the same 25 owner files. This page sets the five side by side: where they converge, where they part ways, and which of those partings are decisions the owner still has to make.</p>
+  <div class="meta">
+    <span>inputs: spec.yaml · SPEC.md · AGENTS.md · project.yaml · subAgents.yaml · 20 locked_prose files</span>
+    <span>drafts: 92 files · 928 KB · 295 judgment calls</span>
+    <span>branch: shackles_harness_restart</span>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#glance">At a glance</a>
+    <a href="#agree">Where all five agree</a>
+    <a href="#diverge">Where they diverge</a>
+    <a href="#jc">Judgment calls</a>
+    <a href="#gaps">Gaps against the brief</a>
+    <a href="#decide">The decisions underneath</a>
+  </nav>
+</header>
+
+<section id="glance">
+  <div class="head">
+    <p class="eyebrow">01 · at a glance</p>
+    <h2>Same brief, five shapes</h2>
+    <p class="prose">Every draft is a tree: one entry-point map, then one file per component down to function signatures and test cases. They differ in how they cut the tree and how much they wrote.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <div class="who"><h3>D1</h3><span class="mono">draft-1</span></div>
+      <dl>
+        <dt>files</dt><dd class="num">25 · 170 KB</dd>
+        <dt>calls</dt><dd class="num">50 logged</dd>
+        <dt>modules</dt><dd class="num">57 in 11 subpackages</dd>
+        <dt>tests</dt><dd class="num">58 files · ~340 cases</dd>
+      </dl>
+      <p class="shape">Flat files numbered by tree level (10 root … 70 contracts). Package split into <code>config/ steps/ prompts/ round/ git/ checks/ ledger/ quote/ agents/ engine/ commands/</code>. One decision function, <code>engine/advance</code>.</p>
+    </article>
+    <article class="card">
+      <div class="who"><h3>D2</h3><span class="mono">draft-2</span></div>
+      <dl>
+        <dt>files</dt><dd class="num">14 · 174 KB</dd>
+        <dt>calls</dt><dd class="num">40 logged</dd>
+        <dt>modules</dt><dd class="num">31 flat</dd>
+        <dt>tests</dt><dd class="num">39 files + 5 probes</dd>
+      </dl>
+      <p class="shape">Seven bottom-up layers; <code>round.py</code> is a single sequencer "with no rules of its own". The only draft with a full traceability table: every AGENTS.md rule, every project.yaml key, every prose rule mapped to a module.</p>
+    </article>
+    <article class="card">
+      <div class="who"><h3>D3</h3><span class="mono">draft-3</span></div>
+      <dl>
+        <dt>files</dt><dd class="num">23 · 212 KB</dd>
+        <dt>calls</dt><dd class="num">71 logged</dd>
+        <dt>modules</dt><dd class="num">33 flat + hook</dd>
+        <dt>tests</dt><dd class="num">36 files · 8 flow files</dd>
+      </dl>
+      <p class="shape">Largest draft; the log spans two files. Owner decisions ride on <code>record</code> and <code>resume</code> flags rather than an <code>owner</code> verb. Nine docs, the most of any draft. Second run after the first died on an output limit.</p>
+    </article>
+    <article class="card">
+      <div class="who"><h3>D4</h3><span class="mono">draft-4</span></div>
+      <dl>
+        <dt>files</dt><dd class="num">13 · 199 KB</dd>
+        <dt>calls</dt><dd class="num">80 logged</dd>
+        <dt>modules</dt><dd class="num">42 + 9 templates</dd>
+        <dt>tests</dt><dd class="num">39 files · 488 cases</dd>
+      </dl>
+      <p class="shape">Contracts come first (<code>00-contracts</code>), then a <code>commands/</code> package of thin verb modules and a <code>plumbing/</code> package of nine template files. Most judgment calls, most named test cases, the only draft with a helper-spawning <code>invoke.py</code>.</p>
+    </article>
+    <article class="card">
+      <div class="who"><h3>D5</h3><span class="mono">draft-5</span></div>
+      <dl>
+        <dt>files</dt><dd class="num">17 · 170 KB</dd>
+        <dt>calls</dt><dd class="num">54 logged</dd>
+        <dt>modules</dt><dd class="num">33 flat + run.py</dd>
+        <dt>tests</dt><dd class="num">35 files · ~380 cases</dd>
+      </dl>
+      <p class="shape">Every component file follows one fixed layout (Purpose · Owns · Depends on · Signatures · Errors · Invariants · Covered by). Seventeen numbered schemas (S1–S17) in a closing file. The engine is split into <code>round_start / next / record / owner</code>.</p>
+    </article>
+  </div>
+</section>
+
+<section id="agree">
+  <div class="head">
+    <p class="eyebrow">02 · consensus</p>
+    <h2>Where all five agree</h2>
+    <p class="prose">Independently, every drafter landed on the same skeleton. Anything below can be treated as settled by the owner's files rather than by any one drafter's taste.</p>
+  </div>
+  <div class="groups">
+    <div class="group">
+      <h3>The cast</h3>
+      <ul>
+        <li>Four roles: an <b>owner</b> in chat, a <b>driver</b> (the top-level chat agent), a <b>runner</b> (<code>harness/src/run.py</code>, plain Python, never talks to a model), and fresh <b>producer</b> and <b>gate</b> sub-agents, one per attempt.</li>
+        <li>The driver performs CHAT-TO-PLAN itself, spawns each sub-agent with the prompt file verbatim, saves the final message unchanged, then calls <code>record</code>.</li>
+        <li>Only the runner commits, pushes, bills, or produces owner-facing text. It never parses prose; it verifies verbatim quotes.</li>
+        <li>Gates are read-only through the tools list (<code>Read, Grep, Glob</code>) and answer PASS or FAIL in their final message.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Stack</h3>
+      <ul>
+        <li>Python, the standard library plus PyYAML, pytest for tests. No build step: <code>python src/run.py …</code> runs as-is.</li>
+        <li>A GitHub Actions workflow running doctor then the non-live suite. Live probes never run in CI.</li>
+        <li>No draft specifies lint, formatter, or type-checker tooling. All five are silent.</li>
+        <li>Agent definitions generated per rung with <code>model</code> and <code>effort</code> front matter, plus a read-only gate twin; committed, with a staleness check.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Steps and state</h3>
+      <ul>
+        <li>The eleven-step table is code: a frozen dataclass table linted against <code>project.yaml: steps</code> and the prose directory. Unknown steps, keys, or prose files refuse <code>start</code>.</li>
+        <li><code>STATE.json</code> in the round folder is the runner's only state; <code>HISTORY.md</code> is append-only and never read back.</li>
+        <li>A round is claimed by a compare-and-swap push of its branch (force-with-lease expecting an absent ref). Every state change is committed and lease-pushed: the fence.</li>
+        <li>Delegation skips only checkpoints. NEEDS-OWNER, BLOCKED, and every limit still pause the round.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Landing</h3>
+      <ul>
+        <li>A textual conflict becomes one agent attempt restricted to the conflicted files, judged mechanically against git's auto-merged tree.</li>
+        <li>POSTMORTEM and CLEANUP commit after landing and reach <code>main</code> through a bounded sync.</li>
+        <li>The round folder under <code>archives/rounds/NNNN/</code> is the permanent record; four drafts also land it for abandoned rounds.</li>
+        <li>Remote round branches are kept, never force-pushed over.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Prompts</h3>
+      <ul>
+        <li>One <code>{{ ns.KEY }}</code> engine over five namespaces: <code>prose</code>, <code>project</code>, <code>round</code>, <code>agents</code> (AGENTS.md <code>##</code> sections by normalised heading), <code>plumbing</code>.</li>
+        <li>Prose includes resolve recursively with a cycle guard; prose is rendered verbatim, never interpreted for behaviour.</li>
+        <li>PROCESS-INSTRUCTIONS and GATE-PROSE are generated mechanically with no judgment language; COMMON-STEP-END is the prompt's tail.</li>
+        <li><code>doctor</code> renders every prompt offline against a synthetic round and names unresolved tokens, unknown steps, and defaulted keys.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Owner channel</h3>
+      <ul>
+        <li>A <code>UserPromptSubmit</code> hook appends every owner prompt to a gitignored <code>OWNER.log</code> (JSON lines). <code>start</code> refuses without it.</li>
+        <li>The driver classifies the owner's words; the runner verifies the quote as a whitespace-normalised substring of the log.</li>
+        <li>The round's slice of the log is copied into the round folder and committed.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Findings and checks</h3>
+      <ul>
+        <li>The verdict wins and blocking flags follow it; upheld twice is settled; a repeat of a withdrawn finding is dropped by normalised quote with a note.</li>
+        <li>A producer must resolve (fixed or disputed) every finding it was handed, or the attempt is rejected mechanically.</li>
+        <li>Mechanical checks run at <code>record</code> on the attempt's uncommitted diff. Strays outside the declared paths are reverted and noted, never a failure; spec files are always strays.</li>
+        <li>Verification runs the suite under <code>verifyTimeoutSeconds</code>; SPEC-TO-TESTS is checked by collect-only; archived tests move to <code>tests-archive/</code>.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Money</h3>
+      <ul>
+        <li>One token estimate everywhere: <code>ceil(bytes / tokenBytes)</code>.</li>
+        <li>Attempts bill measured usage when the driver reports it, else an estimate from prompt size and <code>estOutputFraction</code>; <code>driverUsdPerStep</code> once per step.</li>
+        <li>The living charge is booked once at CLEANUP on the net diff from main-before-landing to the final tree, with the cap, base cost, and <code>testBaseCost</code> per test function.</li>
+        <li>Archive charges for PLAN, SPEC, and the POSTMORTEM Summary; two hard stops (round multiple, projected before landing; individual per attempt); <code>lostValuePerHour</code> shown, never booked; ledger kept inside <code>STATE.json</code>.</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h3>Spec guard and tests</h3>
+      <ul>
+        <li>A hashed baseline of the spec files; one drift test that fails with a diff; <code>start</code> refuses on drift; <code>accept-spec</code> re-baselines.</li>
+        <li>Mechanics tests run on a generated one-line-per-file spec and never read the real prose, so a prose rewrite fails only the drift test.</li>
+        <li>A stub agent with scripted behaviours drives every runner path in-process; git is real, against a bare local remote.</li>
+        <li>Live probes plant a defect and assert on structure (verdict, quoted text), never on wording. Opt-in only.</li>
+        <li>Docs always include <code>PROCESS.md</code> plus the carry-forward <code>TODO.md</code> and <code>CLARIFICATIONS.md</code>, and a test that keeps docs consistent with code.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<section id="diverge">
+  <div class="head">
+    <p class="eyebrow">03 · divergence</p>
+    <h2>Where they diverge</h2>
+    <p class="prose">Forty-two dimensions on which at least one draft breaks from the others. The status column says how the five split: one outlier against four, two camps, or five different answers.</p>
+  </div>
+  <div class="legend" aria-label="Legend">
+    <span><i class="dot split"></i> split: one outlier, or two camps</span>
+    <span><i class="dot scatter"></i> scatter: three or more distinct answers</span>
+  </div>
+  <div class="matrix-wrap">
+  <table class="matrix">
+    <thead>
+      <tr><th class="dim">Dimension</th><th>D1</th><th>D2</th><th>D3</th><th>D4</th><th>D5</th><th class="status">Status</th></tr>
+    </thead>
+    <tbody>
+      <tr class="section-row"><td colspan="7">Repository layout</td></tr>
+      <tr>
+        <td class="dim"><code>.claude/</code> location<small>hooks and generated agent definitions</small></td>
+        <td class="cell">repo root</td><td class="cell">repo root</td><td class="cell"><code>harness/</code></td><td class="cell"><code>harness/</code></td><td class="cell"><code>harness/</code></td>
+        <td class="status"><span class="split"><i class="dot split"></i>2 : 3</span></td>
+      </tr>
+      <tr>
+        <td class="dim">README</td>
+        <td class="cell"><code>harness/README.md</code></td><td class="cell"><code>harness/README.md</code></td><td class="cell">repo root, one paragraph pointing at OWNER-GUIDE</td><td class="cell"><code>harness/README.md</code></td><td class="cell">repo root</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">CLAUDE.md</td>
+        <td class="cell">root, three-line pointer</td><td class="cell">root, two lines, plus <code>harness/CLAUDE.md</code> symlink to AGENTS.md</td><td class="cell"><code>harness/CLAUDE.md</code> generated as <code>@AGENTS.md</code></td><td class="cell">none</td><td class="cell">none</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>4 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Worktrees<small>where and how many</small></td>
+        <td class="cell"><code>harness/.worktrees/&lt;round&gt;-&lt;attempt&gt;</code>: one per attempt, plus a persistent runner worktree</td><td class="cell"><code>harness/.worktrees/round-NNNN</code> plus <code>landing-NNNN</code></td><td class="cell"><code>&lt;repo&gt;/.worktrees/round-NNNN</code></td><td class="cell"><code>harness/.worktrees/round-NNNN</code></td><td class="cell"><code>&lt;repo&gt;/.worktrees/round-NNNN</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>4 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Spec baseline<small>what the drift guard keeps</small></td>
+        <td class="cell"><code>archives/spec-baseline.yaml</code>, hashes only</td><td class="cell"><code>harness/spec-baseline/</code>: manifest plus full copies</td><td class="cell">hashes in committed <code>local.yaml</code>, copies under <code>archives/spec-baseline/</code></td><td class="cell"><code>harness/spec.baseline.json</code>, hashes only</td><td class="cell"><code>archives/spec-baseline/</code>: <code>MANIFEST.json</code> plus <code>files/</code> copies</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim"><code>local.yaml</code></td>
+        <td class="cell">gitignored</td><td class="cell">gitignored</td><td class="cell">committed; it carries the baseline hashes</td><td class="cell">gitignored</td><td class="cell">gitignored</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Round branch name</td>
+        <td class="cell"><code>round/NNNN</code></td><td class="cell"><code>round/NNNN</code></td><td class="cell"><code>round/NNNN</code></td><td class="cell"><code>shackles/round-NNNN</code></td><td class="cell"><code>round/NNNN</code></td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim"><code>INDEX.md</code></td>
+        <td class="cell">hand-maintained, lint-checked</td><td class="cell">generated by doctor</td><td class="cell">generated from docstrings, checked</td><td class="cell">hand-maintained at CLEANUP, test-checked</td><td class="cell">generated at CLEANUP, test-checked</td>
+        <td class="status"><span class="split"><i class="dot split"></i>2 : 3</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Ledger on disk</td>
+        <td class="cell"><code>archives/LEDGER.md</code> for eyes, plus the block in STATE</td><td class="cell">inside STATE (<code>bill</code>)</td><td class="cell">inside STATE</td><td class="cell">inside STATE</td><td class="cell">inside STATE (S10)</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Agent definition names</td>
+        <td class="cell"><code>shackles-&lt;rung&gt;[-gate]</code></td><td class="cell"><code>shackles-&lt;rung&gt;[-readonly]</code></td><td class="cell"><code>&lt;rung&gt;[-gate]</code></td><td class="cell"><code>shackles-&lt;rung&gt;[-gate]</code></td><td class="cell"><code>shackles-&lt;rung&gt;-{work,gate}</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>4 ways</span></td>
+      </tr>
+
+      <tr class="section-row"><td colspan="7">Runner shape</td></tr>
+      <tr>
+        <td class="dim">Source layout</td>
+        <td class="cell">package with 11 subpackages, 57 modules</td><td class="cell">31 flat modules; <code>run.py</code> puts its own dir on <code>sys.path</code></td><td class="cell">33 flat modules plus <code>hooks/</code></td><td class="cell">package with <code>commands/</code> and <code>plumbing/</code> subpackages, 42 modules, 9 template files</td><td class="cell">33 flat modules under <code>shackles/</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Who sequences the round</td>
+        <td class="cell"><code>engine/advance</code>, one decision function, plus <code>attempts</code>, <code>landing_step</code>, <code>booking</code></td><td class="cell"><code>round.py</code>, the only module that calls everything, "no rules of its own"</td><td class="cell"><code>next_action</code>, <code>recording</code>, <code>pauses</code>, <code>landing</code> as the only orchestrators</td><td class="cell"><code>commands/next_.py::advance</code> plus a fixed 13-item <code>record</code> sequence</td><td class="cell"><code>round_start / next / record / owner.py</code> plus <code>advance.py</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">CLI verbs</td>
+        <td class="cell">10: setup doctor accept-spec start next record owner judgment status hook</td><td class="cell">16, incl. start next record owner resume abandon finish judgment agents hook</td><td class="cell">install · doctor · spec accept · start · next · record · resume · abandon · jc · prune; owner decisions are flags on <code>record</code> and <code>resume</code></td><td class="cell">10: doctor start next record owner status judgment spawn spec-drift accept-spec</td><td class="cell">14: setup doctor accept-spec start next record owner jc status ledger verify index hook render</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Output convention</td>
+        <td class="cell">one JSON object on stdout, human text on stderr</td><td class="cell">JSON objects (<code>Next</code>, record result, error)</td><td class="cell">human block by default, <code>--json</code> opt-in</td><td class="cell">exactly one JSON object always, <code>--human</code> opt-in</td><td class="cell">labelled lines by default, <code>--json</code> opt-in</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Exit codes</td>
+        <td class="cell">0 ok · 2 refused · 1 crash</td><td class="cell">0 · 1 · 2 · 3 · 4, lock lost = 4</td><td class="cell">0 · 2 usage · 3 refused · 4 fence · 5 invalid</td><td class="cell">0 · 1 crash · 2 refused · 3 fence · 4 usage</td><td class="cell">0 · 1 · 2 · 3</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim"><code>next</code> vocabulary</td>
+        <td class="cell">SELF · SPAWN · OWNER · END</td><td class="cell">spawn · self · chat · done</td><td class="cell">one <code>Action</code> built by prepare_producer / gate / checkpoint / landing</td><td class="cell">none · driver · producer · gate · checkpoint · owner · done</td><td class="cell">spawn · driver-step · pause · ended · refused</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Owner decision vocabulary</td>
+        <td class="cell">approve delegate override answer abandon resume</td><td class="cell">approve delegate delegate-through override answer abandon hard-stop-multiple note accept-spec</td><td class="cell"><code>record --decision approve|delegate|abandon</code> with <code>--through</code>, <code>--override</code>; <code>resume --hard-stop-multiple --extend</code>; <code>abandon</code></td><td class="cell">approve delegate delegate-through override answer abandon revise resume raise-limit</td><td class="cell">approve delegate override answer abandon continue raise-hard-stop</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Judgment-call command</td>
+        <td class="cell"><code>run.py judgment</code></td><td class="cell"><code>run.py judgment</code></td><td class="cell"><code>run.py jc</code></td><td class="cell"><code>run.py judgment</code></td><td class="cell"><code>run.py jc</code></td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+
+      <tr class="section-row"><td colspan="7">Round mechanics</td></tr>
+      <tr>
+        <td class="dim">Where plan answers live</td>
+        <td class="cell"><code>PLAN.json</code> (<code>answerQuote</code>)</td><td class="cell"><code>PLAN.json</code> (<code>answer_quote</code>)</td><td class="cell"><code>PLAN.json</code>, verified at record</td><td class="cell"><code>STATE.json</code> questions with global ids</td><td class="cell"><code>STATE.answers</code>, never PLAN.json</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">CHAT-TO-PLAN and its gate</td>
+        <td class="cell">driver does it via SELF; gate prose absent, lint allows it</td><td class="cell">gated before the owner's approval is requested</td><td class="cell">driver is the producer; missing gate prose flagged</td><td class="cell">driver is the producer; missing gate prose flagged</td><td class="cell">a <code>driver</code> attempt kind with no gate</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Attempts per worktree</td>
+        <td class="cell">a fresh detached worktree per attempt</td><td class="cell">one per round, one open attempt at a time</td><td class="cell">one per round</td><td class="cell">one per round; every attempt's diff committed even when rejected, as the retry base</td><td class="cell">one per round</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Losing the fence</td>
+        <td class="cell">pause <code>LEASE</code></td><td class="cell"><code>LockLost</code>, exit 4, "writes nothing"</td><td class="cell">exit 4; loser's commit saved to <code>round/NNNN-orphan-&lt;ts&gt;</code>, branch reset</td><td class="cell"><code>FenceError</code>, exit 3</td><td class="cell">pause <code>fence</code>, <code>FenceLost</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Landing merge</td>
+        <td class="cell">main into the round branch; a conflict is committed with markers</td><td class="cell">round branch into main, in a <code>landing-NNNN</code> worktree</td><td class="cell"><code>origin/main</code> into the round branch, in the worktree</td><td class="cell"><code>merge --no-ff</code> main into the branch; automerge snapshot under <code>refs/shackles/automerge/</code></td><td class="cell"><code>merge-tree --write-tree</code>; verify in a temporary worktree; rebase the branch onto the landed commit</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Conflict attempts allowed</td>
+        <td class="cell">one</td><td class="cell">two (<code>LANDING-1</code>, <code>LANDING-2</code>)</td><td class="cell">one; a second conflict is <code>LANDING_FAILED</code></td><td class="cell">one per merge try, ids reused during sync</td><td class="cell">one</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Self-hosting: when landed runner code takes effect</td>
+        <td class="cell">flagged as the draft's highest-risk call; timing not addressed</td><td class="cell">not addressed</td><td class="cell"><code>next</code> fast-forwards the main checkout right after landing, so later steps run the landed runner</td><td class="cell">judgment and spawn go through the driver checkout's <code>run.py --root</code>; hazard documented</td><td class="cell">runner always runs from the driver's checkout; changes apply from the next round</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>3 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">A red suite at record</td>
+        <td class="cell">mechanical retry, bounded by <code>maxRoundAttempts</code></td><td class="cell">the record is refused and the same attempt re-runs; refused counter, cost booked each time; not a gate turn</td><td class="cell">becomes a runner finding and consumes a gate turn</td><td class="cell">INVALID rejection retried without a gate, counted toward <code>maxTurnsPerGate</code></td><td class="cell">one rejections counter per step (FAIL, mechanical, malformed), bounded by <code>maxTurnsPerGate</code></td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>3 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">What <code>maxRoundAttempts</code> bounds</td>
+        <td class="cell">owner resumes and mechanical retries</td><td class="cell">restarts after a pause</td><td class="cell">landing retries when main moves</td><td class="cell">restarts</td><td class="cell">landing and sync push races</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>3 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Test archiving granularity</td>
+        <td class="cell">whole files</td><td class="cell">individual functions by AST span</td><td class="cell">individual functions cut by ast; class tests hoisted</td><td class="cell">whole files via <code>git mv</code></td><td class="cell">files, or a file split</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Abandon</td>
+        <td class="cell">lands only the round folder; branch kept</td><td class="cell">syncs the round folder only; branch kept</td><td class="cell">record stays on the branch; sync only after a landing</td><td class="cell">record-only landing</td><td class="cell"><code>sync_archives_only</code> merges the archive folder</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+
+      <tr class="section-row"><td colspan="7">Money and configuration</td></tr>
+      <tr>
+        <td class="dim"><code>spawnCost</code></td>
+        <td class="cell">added on top of usage</td><td class="cell">not stated</td><td class="cell">added on top of usage</td><td class="cell">a floor: <code>max(spawnCost, usage)</code></td><td class="cell">a floor</td>
+        <td class="status"><span class="split"><i class="dot split"></i>2 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Measured usage arrives as</td>
+        <td class="cell"><code>--tokens N</code>, split by <code>estOutputFraction</code></td><td class="cell"><code>--usage</code></td><td class="cell">four <code>--*-tokens</code> flags</td><td class="cell"><code>--usage-json</code>, then <code>--tokens</code>, then estimate</td><td class="cell"><code>--tokens-*</code> flags</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Defaulted config keys<small>keys the code needs that project.yaml lacks</small></td>
+        <td class="cell">10: testPaths, carryForwardFiles, verifyCommand, collectCommand, promptWarnTokens, mainBranch, remoteName, syncAttempts, stepEndDelivery, quoteMatch</td><td class="cell">4: testPaths, mainBranch, remote, promptWarnTokens</td><td class="cell">5: testPaths, carryForwardFiles, promptWarnTokens, ownerLogPath, verifyCommand</td><td class="cell">2: testPaths, promptSizeWarnTokens; any other unregistered key is an error</td><td class="cell">5: testPaths, verifyCommand, promptTokenWarning, gitRemote, mainBranch</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Carry-forward file names</td>
+        <td class="cell">config key <code>carryForwardFiles</code></td><td class="cell">taken from the project.yaml comment</td><td class="cell">defaulted key</td><td class="cell">code constants</td><td class="cell">code; excluded from the living charge, priced at the postmortem rate</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>4 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Unresolved prompt token at run time</td>
+        <td class="cell">left verbatim and listed</td><td class="cell">collected and reported</td><td class="cell">refused (lenient mode only for doctor)</td><td class="cell">left verbatim and listed</td><td class="cell">refused with <code>UnresolvedTokenError</code></td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+
+      <tr class="section-row"><td colspan="7">Owner channel</td></tr>
+      <tr>
+        <td class="dim">Hooks installed</td>
+        <td class="cell">UserPromptSubmit + SessionStart (<code>doctor --quiet</code>)</td><td class="cell">UserPromptSubmit + SessionStart (reports staleness, regenerates nothing)</td><td class="cell">UserPromptSubmit only</td><td class="cell">UserPromptSubmit only</td><td class="cell">UserPromptSubmit + SessionStart (marker, local.yaml, stale warnings)</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+      <tr>
+        <td class="dim">A quote must come from</td>
+        <td class="cell">the round's slice from a machine cursor; latest match wins</td><td class="cell">the log, as a verbatim substring</td><td class="cell">any entry in the local log or the round's slice</td><td class="cell">prompts since the round's slice start</td><td class="cell">an entry logged after the current pause began</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim"><code>start</code> needs an owner quote</td>
+        <td class="cell">no</td><td class="cell">no</td><td class="cell">yes, <code>start --quote</code></td><td class="cell">no; the round is claimed before planning</td><td class="cell">no</td>
+        <td class="status"><span class="split"><i class="dot split"></i>4 : 1</span></td>
+      </tr>
+
+      <tr class="section-row"><td colspan="7">Tests and docs</td></tr>
+      <tr>
+        <td class="dim">Test files · named cases</td>
+        <td class="cell">58 · ~340</td><td class="cell">39 + 5 probes · 22 whole-round cases</td><td class="cell">36 · 8 flow files, cases not totalled</td><td class="cell">39 · 488</td><td class="cell">35 · ~380</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Stub behaviours</td>
+        <td class="cell">30</td><td class="cell">38</td><td class="cell">28 producer + 14 gate</td><td class="cell">per-attempt Behavior objects, uncounted</td><td class="cell">46</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Live probes and their switch</td>
+        <td class="cell">12 probes; pytest marker <code>live</code></td><td class="cell">5; <code>SHACKLES_LIVE=1</code>, marker <code>live</code></td><td class="cell">4; <code>SHACKLES_PROBES=1</code>, marker <code>probe</code></td><td class="cell">8; <code>SHACKLES_LIVE=1</code>, marker <code>live</code></td><td class="cell">6; <code>SHACKLES_PROBES=1</code>, probes dir ignored</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>4 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Docs set<small>beyond the common PROCESS, TODO, CLARIFICATIONS</small></td>
+        <td class="cell">+ CONTRACTS</td><td class="cell">+ MONEY, TESTING</td><td class="cell">+ OWNER-GUIDE, ARCHITECTURE, PROMPTS, SCHEMAS, LEDGER, TESTING</td><td class="cell">+ ARCHITECTURE, FORMATS</td><td class="cell">+ ARCHITECTURE</td>
+        <td class="status"><span class="scatter"><i class="dot scatter"></i>5 ways</span></td>
+      </tr>
+      <tr>
+        <td class="dim">Requirement traceability</td>
+        <td class="cell">none; component map with owner phrases quoted inline</td><td class="cell">19-row inventory plus full tables over every rule and key (§9)</td><td class="cell">12 restated principles, no table</td><td class="cell">14-row requirements table (§1.1)</td><td class="cell">17-row feature table (§5.7)</td>
+        <td class="status"><span class="split"><i class="dot split"></i>3 : 2</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+<section id="jc">
+  <div class="head">
+    <p class="eyebrow">04 · judgment calls</p>
+    <h2>How each draft tracked its own uncertainty</h2>
+    <p class="prose">Every drafter was given the same definition: a judgment call is any choice that lands in the finished work that you are not confident in making correctly, for any reason. Each invented its own classification. The counts range from 40 to 80, and the same handful of gaps in the owner's files drove calls in every log.</p>
+  </div>
+  <div class="schemes">
+    <article class="scheme">
+      <div class="who"><h3>D1</h3><span class="count">50</span></div>
+      <div class="axes">
+        <span><b>Basis</b> DEFINED · UNDEFINED</span>
+        <span><b>Kind</b> reading · mechanism · default · scope</span>
+        <span><b>Risk</b> low · medium · high</span>
+      </div>
+      <p class="tally">DEFINED 28 / UNDEFINED 22 · mechanism 20, reading 15, scope 8, default 7 · high 2<br>JC-34…50 never cited inline; 17 entries omit "why not confident"</p>
+    </article>
+    <article class="scheme">
+      <div class="who"><h3>D2</h3><span class="count">40</span></div>
+      <div class="axes">
+        <span><b>Cause</b> SILENCE · AMBIGUITY · CONFLICT · ENVIRONMENT · ENGINEERING</span>
+        <span><b>Reach</b> LOCAL · CROSS</span>
+        <span><b>Confidence</b> LOW · MEDIUM ("HIGH is not a judgment call")</span>
+      </div>
+      <p class="tally">AMBIGUITY 12, SILENCE 10, ENGINEERING 8, ENVIRONMENT 7, CONFLICT 3 · CROSS 6 · LOW 7<br>all 40 cited inline</p>
+    </article>
+    <article class="scheme">
+      <div class="who"><h3>D3</h3><span class="count">71</span></div>
+      <div class="axes">
+        <span><b>Kind</b> GAP · AMBIGUITY · CONFLICT · TOOLING</span>
+        <span><b>Weight</b> light · structural · owner-facing</span>
+        <span><b>D/U</b> the owner's defined / undefined split</span>
+      </div>
+      <p class="tally">GAP 36, AMBIGUITY 24, TOOLING 8, CONFLICT 3 · light 51, structural 13, owner-facing 7 · D 58 / U 13<br>66 of 71 cited inline; log split over two files</p>
+    </article>
+    <article class="scheme">
+      <div class="who"><h3>D4</h3><span class="count">80</span></div>
+      <div class="axes">
+        <span><b>Cause</b> GAP · AMBIG · TENSION · TOOL · TASTE</span>
+        <span><b>Reach</b> local · component · system</span>
+      </div>
+      <p class="tally">GAP 39, AMBIG 24, TASTE 8, TOOL 7, TENSION 2 · local 48, component 26, system 6<br>42 of 80 cited inline; the rest name their section in the log</p>
+    </article>
+    <article class="scheme">
+      <div class="who"><h3>D5</h3><span class="count">54</span></div>
+      <div class="axes">
+        <span><b>Kind</b> DEFINED · UNDEFINED (the owner's split)</span>
+        <span><b>Cause</b> A silent · B ambiguous · C platform · D taste · E safety</span>
+        <span><b>Impact</b> high · medium · low</span>
+      </div>
+      <p class="tally">DEFINED 43 / UNDEFINED 11 · A 20, B 13, C 11, D 4, E 6 · high 8<br>all 54 cited inline, each with an Affects back-reference</p>
+    </article>
+  </div>
+  <div class="prose">
+    <p>Three drafts (D1, D3, D5) adopted the owner's own DEFINED / UNDEFINED distinction as one axis; D2 and D4 classified by cause and blast radius instead. Whatever the scheme, the dominant cause is the same everywhere: the owner's files are silent on the point, then ambiguous, then dependent on an unverifiable fact about Claude Code or git. Only D2 and D5 cross-reference every call from the spec text back to the log.</p>
+  </div>
+  <h3>The uncertainties every drafter hit</h3>
+  <div class="table-wrap">
+  <table class="plain">
+    <thead><tr><th>Gap or tension in the owner's files</th><th>Flagged by</th><th>How the drafts resolved it</th></tr></thead>
+    <tbody>
+      <tr><td><code>testPaths</code> is referenced in the project.yaml commentary but defined nowhere.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>All five invent a defaulted key that doctor names. It is the one default every draft shares.</td></tr>
+      <tr><td>CHAT-TO-PLAN has a gate switch in the step map but no gate prose file.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Four let lint tolerate the absence and have the driver do the step ungated; D2 gates it anyway before approval.</td></tr>
+      <tr><td>COMMON-STEP-END is "produced at the end of every step", which reads like a second message.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>All append it as the tail of the single prompt; D1 adds an optional follow-up mode, D2 also writes it as a separate <code>-END.txt</code>.</td></tr>
+      <tr><td>Claude Code facts the files cannot settle: hook stdin keys, <code>effort</code> front matter, definition load order, <code>claude -p</code> flags.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Logged as tooling calls and isolated behind one constant or small function so they can be corrected in one place.</td></tr>
+      <tr><td>What <code>maxRoundAttempts</code> ("restarting a round after minor issues") actually bounds.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Five readings: resumes plus retries, restarts, landing retries, or push races. See the matrix.</td></tr>
+      <tr><td>"Shares sum to 1" versus "a gate that is off does not incur a charge".</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Off gates carry a zero share; the pools are checked separately; shares size prompts and the individual hard stop but are never billed.</td></tr>
+      <tr><td>Where the harness root is, and what "from the harness root" means.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D4</span> <span class="d">D5</span></td><td>The directory holding project.yaml; D2 walks up to find it, D3 takes the parent of <code>src/</code>, the rest assume <code>harness/</code>.</td></tr>
+      <tr><td>The carry-forward file names appear only in a comment.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span></td><td>A defaulted key (D1, D3), the comment itself (D2), or code constants (D4, D5); all price them at the postmortem rate.</td></tr>
+      <tr><td><code>lostValuePerHour</code> is "for context" yet sits among costs.</td><td class="flags"><span class="d">D1</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Shown to agents and the owner, never booked to the ledger.</td></tr>
+      <tr><td><code>allowUpstream</code> exists while upstream mechanics are a TODO.</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D3</span> <span class="d">D4</span></td><td>The key is read and any value but 0 refuses <code>start</code>.</td></tr>
+      <tr><td><code>driverUsdPerStep</code> says per step; the driver's work is per attempt.</td><td class="flags"><span class="d">D1</span> <span class="d">D3</span> <span class="d">D4</span> <span class="d">D5</span></td><td>Booked once per accepted step in every draft that addresses it.</td></tr>
+      <tr><td>"STATE.json is the runner's only state" versus a ledger, and versus owner answers.</td><td class="flags"><span class="d">D1</span> <span class="d">D4</span> <span class="d">D5</span></td><td>The ledger lives inside STATE everywhere; answers go to PLAN.json in three drafts and to STATE in two.</td></tr>
+      <tr><td>A "hashed baseline" cannot print the "failing test with diff" the owner asks for.</td><td class="flags"><span class="d">D2</span> <span class="d">D3</span> <span class="d">D5</span></td><td>Those three keep full copies beside the hashes; D1 and D4 keep hashes and diff against git history.</td></tr>
+      <tr><td>The rung ladder in subAgents.yaml has no stated order; the <code>high</code> rung is named "Fable 5.1 Low".</td><td class="flags"><span class="d">D1</span> <span class="d">D2</span> <span class="d">D4</span></td><td>File order is the ladder, top rung highest; <code>maxAgent</code> caps what a plan may pick.</td></tr>
+      <tr><td>The vision says "general software development" while the living paths point at the harness itself.</td><td class="flags"><span class="d">D1</span> <span class="d">D4</span></td><td>All five build the self-hosting reading; how landed runner code takes effect is where they part (see the matrix).</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="gaps">
+  <div class="head">
+    <p class="eyebrow">05 · against the brief</p>
+    <h2>Where each draft falls short</h2>
+    <p class="prose">The brief asked for signatures with typed parameters, returns, purpose and errors; for test cases with their assertions; and for no line-by-line implementation. These are the analysts' concrete findings, one draft at a time, followed by what all five have in common.</p>
+  </div>
+  <div class="gaps">
+    <div class="gap"><div class="who">D1</div><ul>
+      <li>Parameters are often untyped (<code>s</code>, <code>ctx</code>, <code>state</code>, <code>now</code>); errors are named for only some functions.</li>
+      <li>The optional follow-up step-end mode is never wired into the engine; how a checkpoint gets recorded is unspecified.</li>
+      <li>The hook "prints nothing to stdout", contradicting the one-JSON-object rule; <code>status</code> has no output shape.</li>
+      <li>No unit tests for <code>config/local</code>, <code>engine/attempts</code>, <code>landing_step</code>, <code>booking</code>, or the command modules.</li>
+      <li>Drifts into exact git argv, regexes, and depth constants; 17 of 50 calls lack a rationale.</li>
+    </ul></div>
+    <div class="gap"><div class="who">D2</div><ul>
+      <li><code>State</code>'s body is elided and the <code>StepState</code> it returns is never defined; the <code>control.KINDS</code> strings are never listed.</li>
+      <li>The seven-layer rule is contradicted by its own dependency lists (plumbing → results, render → tokens, doctor → gitops, landing → verify, ledger and limits; results and findings import each other).</li>
+      <li>A <code>schemas</code> module is cited that the draft says does not exist; a step-table row and two comments keep unresolved "?" asides.</li>
+      <li>Living charge, findings reconciliation, landing, <code>next</code> and <code>record</code> are spelled out step by step.</li>
+    </ul></div>
+    <div class="gap"><div class="who">D3</div><ul>
+      <li>The command handlers are listed generically; <code>state.py</code> gives 18 sub-dataclasses by name only.</li>
+      <li>SPEC.md calls <code>paths</code> a leaf while its section depends on <code>config</code>; two return types contradict their prose; <code>doctor --show</code> and <code>--debug</code> are missing from the CLI table.</li>
+      <li>Probe test files are unnamed; three unit-test pairs are listed jointly; authorial asides remain in the text.</li>
+      <li>Prescribes exact git flags, source-surgery rules for archiving test functions, and per-extension index extraction rules.</li>
+    </ul></div>
+    <div class="gap"><div class="who">D4</div><ul>
+      <li>About fifteen helper dataclasses are named without fields (CheckpointView, PauseView, the <code>*Info</code> and <code>*Outcome</code> types, Claim, Change, Slot, InvokeRequest).</li>
+      <li>The nine plumbing templates are given as required sections, not content; all seven docs are outlines.</li>
+      <li>Naming inconsistencies: <code>test_agent_defs</code> versus <code>test_agentdefs</code>, <code>test_doctor</code> versus <code>test_cmd_doctor</code>.</li>
+      <li>Most of the 488 named cases carry no explicit assertion; the 13-item record sequence, exact git invocations and a 90-day price-date constant read as implementation.</li>
+    </ul></div>
+    <div class="gap"><div class="who">D5</div><ul>
+      <li>Parameters untyped in places (<code>cfg</code>, <code>roster</code>, <code>now</code>); nested dataclasses are defined as "mirroring S1"; <code>__init__.py</code> is never mentioned.</li>
+      <li>The stated dependency direction is contradicted by the component files (08 → 05, 09 → 07 and 08, 10 and 11 call each other).</li>
+      <li><code>check_attempt</code> is declared with three arguments and called with two.</li>
+      <li>Literal file contents, git flags, regexes and magic numbers are fixed in prose.</li>
+    </ul></div>
+    <div class="gap"><div class="who">All</div><ul>
+      <li>No draft specifies lint, formatting, or type-checking tooling.</li>
+      <li>Test assertions are mostly implied by the case name rather than stated.</li>
+      <li>Every draft claims that no file is load-bearing, and every analyst found at least one dependency that breaks the draft's own layering rule.</li>
+      <li>Every draft drifts into exact git invocations, which the brief excluded.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="decide">
+  <div class="head">
+    <p class="eyebrow">06 · the decisions underneath</p>
+    <h2>What the differences are really asking</h2>
+    <p class="prose">Most of the divergence matrix collapses into fourteen choices the owner's files leave open. Each is listed with the camps the drafts fell into; none is settled here.</p>
+  </div>
+  <ol class="decisions">
+    <li><b>Where the Claude Code surface lives.</b><span><code>.claude/</code>, README and CLAUDE.md at the repo root (D1, D2) or under <code>harness/</code> (D3, D4, D5).</span></li>
+    <li><b>The worktree model.</b><span>One worktree per round (D2, D3, D4, D5) or one per attempt (D1); nested under <code>harness/</code> or at the repo root.</span></li>
+    <li><b>What the drift guard stores.</b><span>Hashes only (D1, D4) or hashes plus full copies so the failing test can print a diff (D2, D3, D5); and whether <code>local.yaml</code> is committed (D3 alone).</span></li>
+    <li><b>The CLI's face.</b><span>JSON-first with a human flag (D1, D2, D4) or human-first with a JSON flag (D3, D5), and one exit-code table out of five.</span></li>
+    <li><b>The owner's decision vocabulary.</b><span>Six verbs (D1), seven (D5), nine (D2, D4), or flags on <code>record</code> and <code>resume</code> (D3); plan answers in PLAN.json (D1, D2, D3) or in STATE (D4, D5).</span></li>
+    <li><b>The engine's shape.</b><span>One sequencer module (D2), one decision function with helpers (D1), a command package (D4), or the engine split by verb (D3, D5).</span></li>
+    <li><b><code>spawnCost</code>.</b><span>A floor under the attempt cost (D4, D5) or an addition to it (D1, D3).</span></li>
+    <li><b>How many keys the code may default.</b><span>Two (D4) up to ten (D1). All five agree <code>testPaths</code> must be one and that unknown keys refuse <code>start</code>.</span></li>
+    <li><b>Self-hosting activation.</b><span>Fast-forward the main checkout mid-round so the landed runner finishes the round (D3), hold until the next round (D5), or route only judgment and spawn through the driver checkout (D4).</span></li>
+    <li><b>A red suite at record.</b><span>A separate refused counter (D2), a gate turn (D3, D4, D5), or a round attempt (D1).</span></li>
+    <li><b>Test archiving granularity.</b><span>Whole files (D1, D4, D5) or individual functions cut out by ast (D2, D3).</span></li>
+    <li><b><code>INDEX.md</code>.</b><span>Generated (D2, D3, D5) or hand-maintained and checked (D1, D4).</span></li>
+    <li><b>Hooks.</b><span>The prompt hook only (D3, D4) or prompt plus SessionStart (D1, D2, D5).</span></li>
+    <li><b>Docs beyond PROCESS, TODO and CLARIFICATIONS.</b><span>From one extra file (D5) to six (D3).</span></li>
+  </ol>
+</section>
+
+<footer>
+  <p>Sources: <code>drafts/draft-1</code> … <code>draft-5</code> on branch <code>shackles_harness_restart</code> of fragsworth/shackles_harness, plus one analyst profile per draft under <code>drafts/comparison/</code>, all written against the same 13-heading schema.</p>
+  <p>Method: five drafters worked independently from the 25 owner files with the old implementation off limits. Draft 3's first run died on an output limit before writing anything and was re-run from scratch. Five analysts each profiled one draft without reading the others; this page was composed from those profiles and the five entry-point maps.</p>
+</footer>
+
+</div>
