@@ -7,5 +7,5 @@ files:
   - SPEC.md
   - harness/AGENTS.md
   - harness/project.yaml
-  - harness/subAgetns.yaml
+  - harness/subAgents.yaml
   - harness/locked_prose/*

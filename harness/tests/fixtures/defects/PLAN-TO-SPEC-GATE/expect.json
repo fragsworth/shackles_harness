@@ -1,6 +1,0 @@
-{
-  "verdict": "FAIL",
-  "quote_contains": "dashboard",
-  "files": {"archives/rounds/0001/SPEC.md": "SPEC.md"},
-  "planted": "a web dashboard requirement beyond the plan's scope and against its non-goals"
-}

@@ -1,1 +1,0 @@
-Write tests only under testPaths from SPEC.json (WRITE_PATHS). They freeze at this step's acceptance and stay frozen until the round lands; a wrong test found later comes back to this step as UPSTREAM.

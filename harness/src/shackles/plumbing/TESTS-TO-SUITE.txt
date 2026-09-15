@@ -1,2 +1,0 @@
-Every test file changed this round under testPaths must appear, by the HARNESS-relative path printed below, in exactly one of keep or archive; the runner moves archived files into the round folder's tests-archive/ at acceptance.
-Test files changed this round under testPaths: {{ step.changed_tests }}
